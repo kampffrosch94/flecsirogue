@@ -52,10 +52,8 @@ struct Sprite {
 #[derive(Component, Debug)]
 struct Player;
 
-
 #[derive(Component, Debug)]
 struct Unit;
-
 
 #[derive(Component, Debug)]
 struct Terrain;
@@ -80,6 +78,10 @@ async fn main() {
         .load_texture("assets/32rogues/rogues.png", "rogues")
         .await
         .unwrap();
+    store
+        .load_texture("assets/32rogues/tiles.png", "tiles")
+        .await
+        .unwrap();
 
     let w = World::new();
     w.component::<Player>().is_a::<Unit>();
@@ -98,6 +100,22 @@ async fn main() {
             },
         });
 
+    for x in 0..10 {
+        for y in 0..10 {
+            w.entity()
+                .set(Sprite {
+                    texture: store.get("tiles"),
+                    x: 32.0 * x as f32,
+                    y: 32.0 * y as f32,
+                    params: DrawTextureParams {
+                        source: Some(Rect::new(0., 32., 32., 32.)),
+                        ..Default::default()
+                    },
+                })
+                .add::<Terrain>();
+        }
+    }
+
     w.system::<(&Position, &mut Sprite)>()
         .with::<Unit>()
         .each(move |(pos, sprite)| {
@@ -105,17 +123,29 @@ async fn main() {
             sprite.y = 32. * pos.y as f32;
         });
     w.system::<&Sprite>()
+        .with::<Terrain>()
+        .kind::<OnStore>()
+        .each(move |sprite| {
+            draw_texture_ex(
+                &sprite.texture,
+                sprite.x,
+                sprite.y,
+                WHITE,
+                sprite.params.clone(),
+            );
+        });
+    w.system::<&Sprite>()
         .with::<Unit>()
         .kind::<OnStore>()
-	.each(move |sprite| {
-        draw_texture_ex(
-            &sprite.texture,
-            sprite.x,
-            sprite.y,
-            WHITE,
-            sprite.params.clone(),
-        );
-    });
+        .each(move |sprite| {
+            draw_texture_ex(
+                &sprite.texture,
+                sprite.x,
+                sprite.y,
+                WHITE,
+                sprite.params.clone(),
+            );
+        });
 
     loop {
         clear_background(BLACK);
@@ -134,6 +164,26 @@ async fn main() {
                 pos.x += 1;
             }
         });
+
+        w.query::<&mut Sprite>()
+            .with::<Terrain>()
+            .build()
+            .each(|sprite| {
+                if let Some(ref mut r) = sprite.params.source {
+                    if is_key_pressed(KeyCode::J) {
+                        r.y += 32.0;
+                    }
+                    if is_key_pressed(KeyCode::K) {
+                        r.y -= 32.0;
+                    }
+                    if is_key_pressed(KeyCode::L) {
+                        r.x += 32.0;
+                    }
+                    if is_key_pressed(KeyCode::H) {
+                        r.x -= 32.0;
+                    }
+                }
+            });
 
         //draw_texture(&tileset, 50., 50., WHITE);
 
