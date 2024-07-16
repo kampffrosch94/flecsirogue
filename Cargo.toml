@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0.86"
 flecs_ecs = "0.1.2"
 grids = { git = "https://github.com/kampffrosch94/grids", branch = "grid_math" }
 macroquad = "0.4.11"
