@@ -4,3 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+flecs_ecs = "0.1.2"
+grids = { git = "https://github.com/kampffrosch94/grids", branch = "grid_math" }
+macroquad = "0.4.11"
+
+[profile.dev]
+opt-level = 1
+[profile.dev.package."*"]
+opt-level = 1

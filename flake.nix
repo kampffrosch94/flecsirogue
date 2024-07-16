@@ -9,21 +9,26 @@
     };
     nixpkgs.url = "nixpkgs/nixos-unstable";
   };
-  outputs = { nixpkgs, fenix, ... }:
+  outputs =
+    { nixpkgs, fenix, ... }:
     let
-      forAllSystems = function:
+      forAllSystems =
+        function:
         # insert more systems here
-        nixpkgs.lib.genAttrs [ "x86_64-linux" ] (system:
-          function (import nixpkgs {
-            inherit system;
-            overlays = [ fenix.overlays.default ];
-          }));
+        nixpkgs.lib.genAttrs [ "x86_64-linux" ] (
+          system:
+          function (
+            import nixpkgs {
+              inherit system;
+              overlays = [ fenix.overlays.default ];
+            }
+          )
+        );
 
-    in {
+    in
+    {
       devShells = forAllSystems (pkgs: {
-        default = (pkgs.mkShell.override {
-          stdenv = pkgs.useMoldLinker pkgs.clangStdenv;
-        }) {
+        default = (pkgs.mkShell.override { stdenv = pkgs.useMoldLinker pkgs.clangStdenv; }) {
           packages = with pkgs; [
             # rust stuff
             (pkgs.fenix.complete.withComponents [
@@ -48,13 +53,16 @@
             vulkan-validation-layers
 
             # X
-            # xorg.libX11
-            # xorg.libXcursor
-            # xorg.libXi
-            # xorg.libXrandr
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXi
+            xorg.libXrandr
+
+            # gl
+            libGL
 
             # wayland
-            wayland
+            # wayland
 
             # extra tooling
             tracy # profiler, call with ~Tracy~
@@ -64,13 +72,17 @@
             cargo-watch
           ];
           # stuff we need to run
-          LD_LIBRARY_PATH = with pkgs;
+          LD_LIBRARY_PATH =
+            with pkgs;
             lib.makeLibraryPath [
               alsaLib # sound
-              vulkan-loader
+              libGL
               libxkbcommon # keyboard
-              wayland
+              xorg.libX11
+              xorg.libXi 
+              #wayland
             ];
+          env.LIBCLANG_PATH = "${pkgs.llvmPackages.clang-unwrapped.lib}/lib/libclang.so";
         };
       });
     };
