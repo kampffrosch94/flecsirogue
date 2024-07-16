@@ -1,4 +1,5 @@
 use anyhow::Result;
+use flecs::pipeline::OnStore;
 use std::{collections::HashMap, ops::Index};
 
 use flecs_ecs::prelude::*;
@@ -51,6 +52,14 @@ struct Sprite {
 #[derive(Component, Debug)]
 struct Player;
 
+
+#[derive(Component, Debug)]
+struct Unit;
+
+
+#[derive(Component, Debug)]
+struct Terrain;
+
 #[macroquad::main("Flecsirogue")]
 async fn main() {
     // TODO look into CameraWrapper in my other macroquad project
@@ -73,6 +82,7 @@ async fn main() {
         .unwrap();
 
     let w = World::new();
+    w.component::<Player>().is_a::<Unit>();
 
     let player = w
         .entity_named("Player")
@@ -89,11 +99,15 @@ async fn main() {
         });
 
     w.system::<(&Position, &mut Sprite)>()
+        .with::<Unit>()
         .each(move |(pos, sprite)| {
             sprite.x = 32. * pos.x as f32;
             sprite.y = 32. * pos.y as f32;
         });
-    w.system::<&Sprite>().each(move |sprite| {
+    w.system::<&Sprite>()
+        .with::<Unit>()
+        .kind::<OnStore>()
+	.each(move |sprite| {
         draw_texture_ex(
             &sprite.texture,
             sprite.x,
