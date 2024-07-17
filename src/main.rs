@@ -1,3 +1,6 @@
+mod camera;
+mod util;
+
 use anyhow::Result;
 use flecs::pipeline::OnStore;
 use std::{collections::HashMap, ops::Index};
