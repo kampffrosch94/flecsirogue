@@ -36,16 +36,20 @@ impl Index<&str> for TextureStore {
 }
 
 #[derive(Component, Debug)]
-struct Position {
+struct Pos {
     x: i32,
     y: i32,
+}
+
+#[derive(Component, Debug, Default)]
+struct DrawPos {
+    x: f32,
+    y: f32,
 }
 
 #[derive(Component, Debug)]
 struct Sprite {
     texture: Texture2D,
-    x: f32,
-    y: f32,
     params: DrawTextureParams,
 }
 
@@ -58,20 +62,19 @@ struct Unit;
 #[derive(Component, Debug)]
 struct Terrain;
 
-#[macroquad::main("Flecsirogue")]
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Flecsirogue".to_owned(),
+        fullscreen: false,
+        high_dpi: true,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(window_conf)]
 async fn main() {
     // TODO look into CameraWrapper in my other macroquad project
-    let scale = 4.0;
-    let camera = Camera2D {
-        zoom: vec2(scale / screen_width(), scale / screen_height()),
-        rotation: 0.,
-        offset: vec2(0., 0.0),
-        target: vec2(screen_width() / scale, screen_height() / scale),
-        render_target: None,
-        viewport: None,
-    };
-
-    set_camera(&camera);
+    let scale = 8.0;
 
     let mut store = TextureStore::default();
     store
@@ -88,12 +91,10 @@ async fn main() {
 
     let player = w
         .entity_named("Player")
-        .set(Position { x: 3, y: 3 })
+        .set(Pos { x: 3, y: 3 })
         .add::<Player>()
         .set(Sprite {
             texture: store.get("rogues"),
-            x: 0.,
-            y: 0.,
             params: DrawTextureParams {
                 source: Some(Rect::new(0., 0., 32., 32.)),
                 ..Default::default()
@@ -105,52 +106,57 @@ async fn main() {
             w.entity()
                 .set(Sprite {
                     texture: store.get("tiles"),
-                    x: 32.0 * x as f32,
-                    y: 32.0 * y as f32,
                     params: DrawTextureParams {
                         source: Some(Rect::new(0., 32., 32., 32.)),
                         ..Default::default()
                     },
                 })
+                .set(DrawPos {
+                    x: 32.0 * x as f32,
+                    y: 32.0 * y as f32,
+                })
                 .add::<Terrain>();
         }
     }
 
-    w.system::<(&Position, &mut Sprite)>()
-        .with::<Unit>()
-        .each(move |(pos, sprite)| {
-            sprite.x = 32. * pos.x as f32;
-            sprite.y = 32. * pos.y as f32;
+    w.system::<&Pos>()
+        .without::<DrawPos>()
+        .each_entity(|e, pos| {
+            e.set(DrawPos::default()); // will be updated in same frame
         });
-    w.system::<&Sprite>()
+    w.system::<(&Pos, &mut DrawPos)>()
+        .with::<Unit>()
+        .each(move |(pos, dpos)| {
+            dpos.x = 32. * pos.x as f32;
+            dpos.y = 32. * pos.y as f32;
+        });
+    w.system::<(&Sprite, &DrawPos)>()
         .with::<Terrain>()
         .kind::<OnStore>()
-        .each(move |sprite| {
-            draw_texture_ex(
-                &sprite.texture,
-                sprite.x,
-                sprite.y,
-                WHITE,
-                sprite.params.clone(),
-            );
+        .each(move |(sprite, dp)| {
+            draw_texture_ex(&sprite.texture, dp.x, dp.y, WHITE, sprite.params.clone());
         });
-    w.system::<&Sprite>()
+    w.system::<(&Sprite, &DrawPos)>()
         .with::<Unit>()
         .kind::<OnStore>()
-        .each(move |sprite| {
-            draw_texture_ex(
-                &sprite.texture,
-                sprite.x,
-                sprite.y,
-                WHITE,
-                sprite.params.clone(),
-            );
+        .each(move |(sprite, dp)| {
+            draw_texture_ex(&sprite.texture, dp.x, dp.y, WHITE, sprite.params.clone());
         });
 
     loop {
+        let camera = Camera2D {
+            zoom: vec2(scale / screen_width(), scale / screen_height()),
+            rotation: 0.,
+            offset: vec2(0., 0.0),
+            target: vec2(screen_width() / scale, screen_height() / scale),
+            render_target: None,
+            viewport: None,
+        };
+        set_camera(&camera);
+
         clear_background(BLACK);
 
-        player.get::<&mut Position>(|pos| {
+        player.get::<&mut Pos>(|pos| {
             if is_key_pressed(KeyCode::W) {
                 pos.y -= 1;
             }
@@ -194,4 +200,22 @@ async fn main() {
 
         next_frame().await
     }
+}
+
+#[test]
+#[cfg(test)]
+fn goblin_test() {
+    #[derive(Component, Debug)]
+    struct MaxHealth(i32);
+
+    let w = World::new();
+    w.component::<MaxHealth>()
+        .add_trait::<(flecs::OnInstantiate, flecs::Inherit)>();
+
+    let goblin = w.prefab().set(MaxHealth(4));
+    let e = w.entity().is_a_id(goblin);
+
+    e.get::<&MaxHealth>(|mh| assert_eq!(4, mh.0));
+    goblin.get::<&mut MaxHealth>(|mh| mh.0 = 5);
+    e.get::<&MaxHealth>(|mh| assert_eq!(5, mh.0));
 }
