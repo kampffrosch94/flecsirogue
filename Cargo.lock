@@ -220,10 +220,11 @@ dependencies = [
 
 [[package]]
 name = "flecs_ecs"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "434991644aec755537d99c3b7df1a975bdde24bb38c5b531b43b04308cbe18c5"
+checksum = "40445da19883917cbbb7f717f6140a2d1f851bba3f76c4c9cc321292b3b1351a"
 dependencies = [
+ "bitflags 2.6.0",
  "compact_str",
  "flecs_ecs_derive",
  "flecs_ecs_sys",
@@ -243,9 +244,9 @@ dependencies = [
 
 [[package]]
 name = "flecs_ecs_sys"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e11afd52d7e94a263f4703069646b86240fc775170257eca7f8bc34892c9580"
+checksum = "9aa3506032735c66dd0a51e6eafea1f442e0b56c2c567c1e207d83a235670875"
 dependencies = [
  "bindgen",
  "cc",
