@@ -77,7 +77,6 @@ impl CameraWrapper {
         self.set();
     }
 
-
     pub fn zoom(&mut self, delta: i32) {
         self.scale_exp += delta;
         let base2: f32 = 2.;
@@ -87,8 +86,8 @@ impl CameraWrapper {
     }
 
     pub fn mouse_delta(&mut self, old: impl Into<Vec2f>, new: impl Into<Vec2f>) {
-	let old = old.into();
-	let new = new.into();
+        let old = old.into();
+        let new = new.into();
         self.offset += self.screen_to_world(old) - self.screen_to_world(new);
     }
 
@@ -98,13 +97,13 @@ impl CameraWrapper {
     }
 
     pub fn screen_to_world(&self, pos: impl Into<Vec2>) -> Vec2f {
-	let pos = pos.into();
-	self.camera.screen_to_world(pos).into()
+        let pos = pos.into();
+        self.camera.screen_to_world(pos).into()
     }
 
     pub fn world_to_screen(&self, pos: impl Into<Vec2>) -> Vec2f {
-	let pos = pos.into();
-	self.camera.world_to_screen(pos).into()
+        let pos = pos.into();
+        self.camera.world_to_screen(pos).into()
     }
 }
 
@@ -123,7 +122,7 @@ impl Module for CameraModule {
                 if is_mouse_button_down(MouseButton::Middle) {
                     cw.mouse_delta(last_mouse_position, mouse_position());
                 }
-		
+
                 last_mouse_position = mouse_position();
                 match mouse_wheel() {
                     (_x, y) => {

@@ -448,6 +448,7 @@ dependencies = [
  "grids",
  "macroquad",
  "mapgen",
+ "rand",
  "tween",
 ]
 

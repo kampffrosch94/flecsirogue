@@ -1,6 +1,8 @@
 mod camera;
+mod tilemap;
 mod util;
 mod vendored;
+use tilemap::TilemapModule;
 use vendored::*;
 
 use anyhow::Result;
@@ -149,6 +151,7 @@ async fn main() {
             draw_texture_ex(&sprite.texture, dp.x, dp.y, WHITE, sprite.params.clone());
         });
     w.import::<CameraModule>();
+    w.import::<TilemapModule>();
 
     loop {
         let camera = Camera2D {
@@ -208,13 +211,12 @@ async fn main() {
         w.progress();
 
         egui_macroquad::ui(|egui_ctx| {
-            egui::Window::new("egui ❤ macroquad")
-                .show(egui_ctx, |ui| {
-                    ui.label("Test");
-                });
+            egui::Window::new("egui ❤ macroquad").show(egui_ctx, |ui| {
+                ui.label("Test");
+            });
         });
 
-	egui_macroquad::draw();
+        egui_macroquad::draw();
         next_frame().await
     }
 }
