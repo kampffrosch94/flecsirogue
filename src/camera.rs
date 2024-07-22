@@ -77,9 +77,6 @@ impl CameraWrapper {
         self.set();
     }
 
-    pub fn mouse_delta(&mut self, delta: Vec2f) {
-        self.offset += delta / (self.scale / DPI_FACTOR);
-    }
 
     pub fn zoom(&mut self, delta: i32) {
         self.scale_exp += delta;
@@ -89,9 +86,25 @@ impl CameraWrapper {
         self.scale_tween = Tweener::linear(self.scale, target, 0.25);
     }
 
+    pub fn mouse_delta(&mut self, old: impl Into<Vec2f>, new: impl Into<Vec2f>) {
+	let old = old.into();
+	let new = new.into();
+        self.offset += self.screen_to_world(old) - self.screen_to_world(new);
+    }
+
     pub fn move_camera(&mut self, (x, y): (f32, f32)) {
         self.offset.x += x;
         self.offset.y += y;
+    }
+
+    pub fn screen_to_world(&self, pos: impl Into<Vec2>) -> Vec2f {
+	let pos = pos.into();
+	self.camera.screen_to_world(pos).into()
+    }
+
+    pub fn world_to_screen(&self, pos: impl Into<Vec2>) -> Vec2f {
+	let pos = pos.into();
+	self.camera.world_to_screen(pos).into()
     }
 }
 
@@ -101,17 +114,17 @@ pub struct CameraModule {}
 impl Module for CameraModule {
     fn module(world: &flecs_ecs::prelude::World) {
         world.set(CameraWrapper::new());
-        let mut last_mouse_position = Vec2f::from(mouse_position());
+        let mut last_mouse_position = mouse_position();
         world
             .system_named::<&mut CameraWrapper>("CameraInputMouse")
             .term_at(0)
             .singleton()
             .each(move |cw| {
                 if is_mouse_button_down(MouseButton::Middle) {
-                    let delta: Vec2f = Vec2f::from(mouse_position()) - last_mouse_position;
-                    cw.mouse_delta(delta);
+                    cw.mouse_delta(last_mouse_position, mouse_position());
                 }
-                last_mouse_position = Vec2f::from(mouse_position());
+		
+                last_mouse_position = mouse_position();
                 match mouse_wheel() {
                     (_x, y) => {
                         if y != 0. {
