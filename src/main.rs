@@ -2,6 +2,7 @@ mod camera;
 mod util;
 
 use anyhow::Result;
+use camera::CameraModule;
 use flecs::pipeline::OnStore;
 use std::{collections::HashMap, ops::Index};
 
@@ -145,6 +146,7 @@ async fn main() {
         .each(move |(sprite, dp)| {
             draw_texture_ex(&sprite.texture, dp.x, dp.y, WHITE, sprite.params.clone());
         });
+    w.import::<CameraModule>();
 
     loop {
         let camera = Camera2D {
