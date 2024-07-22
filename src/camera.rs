@@ -25,15 +25,7 @@ impl CameraWrapper {
         let offset = Vec2f { x: 0., y: 0. };
         let offset_tween = Tweener::linear(offset, Vec2f { x: 0., y: 0. }, 0.25);
 
-        let camera = Camera2D {
-            zoom: vec2(scale / screen_width(), scale / screen_height()),
-            rotation: 0.,
-            offset: offset.into(),
-            target: vec2(screen_width() / scale, screen_height() / scale),
-            render_target: None,
-            viewport: None,
-        };
-
+        let camera = Self::create_camera(scale, offset);
         CameraWrapper {
             scale,
             scale_exp,
@@ -41,6 +33,17 @@ impl CameraWrapper {
             offset,
             offset_tween,
             camera,
+        }
+    }
+
+    pub fn create_camera(scale: f32, offset: Vec2f) -> Camera2D {
+        Camera2D {
+            zoom: vec2(scale / screen_width(), scale / screen_height()),
+            rotation: 0.,
+            offset: offset.into(),
+            target: vec2(screen_width() / scale, screen_height() / scale),
+            render_target: None,
+            viewport: None,
         }
     }
 
@@ -60,29 +63,14 @@ impl CameraWrapper {
         if !self.scale_tween.is_finished() {
             let point = Vec2f::from(self.camera.screen_to_world(mouse_position.into()));
             let new_scale = self.scale_tween.move_by(get_frame_time());
-            let new_camera = Camera2D {
-                zoom: vec2(new_scale / screen_width(), new_scale / screen_height()),
-                rotation: 0.,
-                offset: self.offset.into(),
-                target: vec2(screen_width() / new_scale, screen_height() / new_scale),
-                render_target: None,
-                viewport: None,
-            };
+	    let new_camera = Self::create_camera(new_scale, self.offset);
             let new_point = Vec2f::from(new_camera.screen_to_world(mouse_position.into()));
             let pan_correction = new_point - point;
             self.offset -= pan_correction;
             self.scale = new_scale;
         }
 
-        self.camera = Camera2D {
-            zoom: vec2(self.scale / screen_width(), self.scale / screen_height()),
-            rotation: 0.,
-            offset: self.offset.into(),
-            target: vec2(screen_width() / self.scale, screen_height() / self.scale),
-            render_target: None,
-            viewport: None,
-        };
-
+        self.camera = Self::create_camera(self.scale, self.offset);
         self.set();
     }
 
