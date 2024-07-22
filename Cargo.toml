@@ -12,6 +12,10 @@ macroquad = "0.4.11"
 mapgen = "0.6.0"
 tween = "2.0.3"
 
+# egui integration
+egui-miniquad = {git = "https://github.com/kampffrosch94/egui-miniquad", branch = "miniquad_update"}
+egui = "*"
+
 [profile.dev]
 opt-level = 1
 [profile.dev.package."*"]

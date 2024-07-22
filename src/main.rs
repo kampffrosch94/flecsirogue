@@ -1,5 +1,7 @@
 mod camera;
 mod util;
+mod vendored;
+use vendored::*;
 
 use anyhow::Result;
 use camera::CameraModule;
@@ -205,6 +207,14 @@ async fn main() {
 
         w.progress();
 
+        egui_macroquad::ui(|egui_ctx| {
+            egui::Window::new("egui ❤ macroquad")
+                .show(egui_ctx, |ui| {
+                    ui.label("Test");
+                });
+        });
+
+	egui_macroquad::draw();
         next_frame().await
     }
 }
