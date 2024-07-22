@@ -162,17 +162,19 @@ async fn main() {
         clear_background(BLACK);
 
         player.get::<&mut Pos>(|pos| {
-            if is_key_pressed(KeyCode::W) {
-                pos.y -= 1;
-            }
-            if is_key_pressed(KeyCode::S) {
-                pos.y += 1;
-            }
-            if is_key_pressed(KeyCode::A) {
-                pos.x -= 1;
-            }
-            if is_key_pressed(KeyCode::D) {
-                pos.x += 1;
+            if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
+                if is_key_pressed(KeyCode::W) {
+                    pos.y -= 1;
+                }
+                if is_key_pressed(KeyCode::S) {
+                    pos.y += 1;
+                }
+                if is_key_pressed(KeyCode::A) {
+                    pos.x -= 1;
+                }
+                if is_key_pressed(KeyCode::D) {
+                    pos.x += 1;
+                }
             }
         });
 

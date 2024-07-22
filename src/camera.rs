@@ -40,8 +40,11 @@ impl CameraWrapper {
         Camera2D {
             zoom: vec2(scale / screen_width(), scale / screen_height()),
             rotation: 0.,
-            offset: offset.into(),
-            target: vec2(screen_width() / scale, screen_height() / scale),
+            offset: vec2(0., 0.),
+            target: vec2(
+                screen_width() / scale + offset.x,
+                screen_height() / scale + offset.y,
+            ),
             render_target: None,
             viewport: None,
         }
@@ -63,7 +66,7 @@ impl CameraWrapper {
         if !self.scale_tween.is_finished() {
             let point = Vec2f::from(self.camera.screen_to_world(mouse_position.into()));
             let new_scale = self.scale_tween.move_by(get_frame_time());
-	    let new_camera = Self::create_camera(new_scale, self.offset);
+            let new_camera = Self::create_camera(new_scale, self.offset);
             let new_point = Vec2f::from(new_camera.screen_to_world(mouse_position.into()));
             let pan_correction = new_point - point;
             self.offset -= pan_correction;
@@ -128,20 +131,20 @@ impl Module for CameraModule {
             .term_at(0)
             .singleton()
             .each(|cw| {
-		if is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) {
-		    if is_key_pressed(KeyCode::W) {
-			cw.move_camera((0., -1.));
-		    }
-		    if is_key_pressed(KeyCode::S) {
-			cw.move_camera((0., 1.));
-		    }
-		    if is_key_pressed(KeyCode::A) {
-			cw.move_camera((-1., 0.));
-		    }
-		    if is_key_pressed(KeyCode::D) {
-			cw.move_camera((1., 0.));
-		    }
-		}
+                if is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) {
+                    if is_key_pressed(KeyCode::W) {
+                        cw.move_camera((0., -32.));
+                    }
+                    if is_key_pressed(KeyCode::S) {
+                        cw.move_camera((0., 32.));
+                    }
+                    if is_key_pressed(KeyCode::A) {
+                        cw.move_camera((-32., 0.));
+                    }
+                    if is_key_pressed(KeyCode::D) {
+                        cw.move_camera((32., 0.));
+                    }
+                }
             });
         world
             .system_named::<&mut CameraWrapper>("CameraProcessing")
