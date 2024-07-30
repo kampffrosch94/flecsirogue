@@ -3,17 +3,17 @@ use std::ops::{Index, IndexMut};
 use ::rand::{rngs::StdRng, SeedableRng};
 use derive_more::From;
 use flecs_ecs::prelude::*;
-use macroquad::{prelude::*, texture::draw_texture};
+use macroquad::prelude::*;
 use mapgen::*;
 
 #[derive(Component)]
 pub struct Tilemap {
     pub w: i32,
     pub h: i32,
-    tiles: Vec<Tile>,
+    tiles: Vec<TileKind>,
 }
 
-pub enum Tile {
+pub enum TileKind {
     Floor,
     Wall,
 }
@@ -31,22 +31,21 @@ impl Tilemap {
     }
 
     pub fn new() -> Self {
-        let mut rng = StdRng::seed_from_u64(1234);
-        let (w, h) = (80, 50);
+        let mut rng = StdRng::seed_from_u64(2234);
+        let (w, h) = (40, 40);
         let map = MapBuilder::new(w, h)
-            .with(NoiseGenerator::uniform())
-            .with(CellularAutomata::new())
-            .with(AreaStartingPosition::new(XStart::CENTER, YStart::CENTER))
-            .with(CullUnreachable::new())
+            .with(BspRooms::new())
+            .with(NearestCorridors::new())
+            .with(AreaStartingPosition::new(XStart::LEFT, YStart::BOTTOM))
             .with(DistantExit::new())
             .build_with_rng(&mut rng);
         let mut tiles = Vec::new();
         for x in 0..w {
             for y in 0..h {
                 if map.is_walkable(x as _, y as _) {
-                    tiles.push(Tile::Floor);
+                    tiles.push(TileKind::Floor);
                 } else {
-                    tiles.push(Tile::Wall)
+                    tiles.push(TileKind::Wall)
                 }
             }
         }
@@ -59,7 +58,7 @@ impl Tilemap {
 }
 
 impl<T: Into<Coord>> Index<T> for Tilemap {
-    type Output = Tile;
+    type Output = TileKind;
 
     fn index(&self, index: T) -> &Self::Output {
         let pos = index.into();
@@ -76,26 +75,17 @@ impl<T: Into<Coord>> IndexMut<T> for Tilemap {
     }
 }
 
-/*
-pub fn draw_tile_map(game: &Game) {
-    let floor = game.textures["floor"];
-    let wall = game.textures["wall"];
-    for x in 0..game.map.w {
-        for y in 0..game.map.h {
-            let (fx, fy) = (x as f32 * 32., y as f32 * 32.);
-            match game.map[(x, y)] {
-                Tile::Floor => {
-                    draw_texture(floor, fx, fy, WHITE);
-                }
-                Tile::Wall => {
-                    draw_texture(wall, fx, fy, WHITE);
-                }
-            }
-        }
-    }
+#[derive(Component)]
+pub struct WallSprite {
+    pub texture: Texture2D,
+    pub params: DrawTextureParams,
 }
 
-*/
+#[derive(Component)]
+pub struct FloorSprite {
+    pub texture: Texture2D,
+    pub params: DrawTextureParams,
+}
 
 #[derive(Component)]
 pub struct TilemapModule {}
@@ -104,25 +94,29 @@ impl Module for TilemapModule {
     fn module(world: &flecs_ecs::prelude::World) {
         world.set(Tilemap::new());
         world
-            .system_named::<&mut Tilemap>("DrawTilemap")
+            .system_named::<(&Tilemap, &WallSprite, &FloorSprite)>("DrawTilemap")
             .term_at(0)
             .singleton()
-            .each(|tm| {
-            //     let floor = game.textures["floor"];
-            //     let wall = game.textures["wall"];
-            //     for x in 0..tm.w {
-            //         for y in 0..tm.h {
-            //             let (fx, fy) = (x as f32 * 32., y as f32 * 32.);
-            //             match tm[(x, y)] {
-            //                 Tile::Floor => {
-            //                     draw_texture(floor, fx, fy, WHITE);
-            //                 }
-            //                 Tile::Wall => {
-            //                     draw_texture(wall, fx, fy, WHITE);
-            //                 }
-            //             }
-            //         }
-            //     }
+            .term_at(1)
+            .singleton()
+            .term_at(2)
+            .singleton()
+            .each(|(tm, wall_s, floor_s)| {
+                for x in 0..tm.w {
+                    for y in 0..tm.h {
+                        let (fx, fy) = (x as f32 * 32., y as f32 * 32.);
+                        match tm[(x, y)] {
+                            TileKind::Floor => {
+                                let s = floor_s;
+                                draw_texture_ex(&s.texture, fx, fy, WHITE, s.params.clone());
+                            }
+                            TileKind::Wall => {
+                                let s = wall_s;
+                                draw_texture_ex(&s.texture, fx, fy, WHITE, s.params.clone());
+                            }
+                        };
+                    }
+                }
             });
     }
 }

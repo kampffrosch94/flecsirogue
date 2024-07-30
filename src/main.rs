@@ -1,74 +1,17 @@
 mod camera;
+mod sprite;
 mod tilemap;
 mod util;
 mod vendored;
-use tilemap::TilemapModule;
+use egui::Slider;
+use sprite::*;
+use tilemap::*;
 use vendored::*;
 
-use anyhow::Result;
 use camera::CameraModule;
-use flecs::pipeline::OnStore;
-use std::{collections::HashMap, ops::Index};
 
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
-
-#[derive(Default)]
-pub struct TextureStore {
-    textures: HashMap<String, Texture2D>,
-}
-
-impl TextureStore {
-    pub async fn load_texture(
-        &mut self,
-        path: impl AsRef<str>,
-        name: impl Into<String>,
-    ) -> Result<()> {
-        let texture = load_texture(path.as_ref()).await?;
-        texture.set_filter(FilterMode::Nearest);
-        self.textures.insert(name.into(), texture);
-        Ok(())
-    }
-
-    pub fn get(&self, name: impl AsRef<str>) -> Texture2D {
-        self[name.as_ref()].clone()
-    }
-}
-
-impl Index<&str> for TextureStore {
-    type Output = Texture2D;
-
-    fn index(&self, index: &str) -> &Self::Output {
-        &self.textures[index]
-    }
-}
-
-#[derive(Component, Debug)]
-struct Pos {
-    x: i32,
-    y: i32,
-}
-
-#[derive(Component, Debug, Default)]
-struct DrawPos {
-    x: f32,
-    y: f32,
-}
-
-#[derive(Component, Debug)]
-struct Sprite {
-    texture: Texture2D,
-    params: DrawTextureParams,
-}
-
-#[derive(Component, Debug)]
-struct Player;
-
-#[derive(Component, Debug)]
-struct Unit;
-
-#[derive(Component, Debug)]
-struct Terrain;
 
 fn window_conf() -> Conf {
     Conf {
@@ -81,9 +24,10 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    // TODO look into CameraWrapper in my other macroquad project
-    let scale = 8.0;
+    let w = World::new();
 
+    // not sure how to move the TextureStore into a module since it uses async for loading
+    // resources
     let mut store = TextureStore::default();
     store
         .load_texture("assets/32rogues/rogues.png", "rogues")
@@ -93,10 +37,6 @@ async fn main() {
         .load_texture("assets/32rogues/tiles.png", "tiles")
         .await
         .unwrap();
-
-    let w = World::new();
-    w.component::<Player>().is_a::<Unit>();
-
     let player = w
         .entity_named("Player")
         .set(Pos { x: 3, y: 3 })
@@ -109,61 +49,52 @@ async fn main() {
             },
         });
 
-    for x in 0..10 {
-        for y in 0..10 {
-            w.entity()
-                .set(Sprite {
-                    texture: store.get("tiles"),
-                    params: DrawTextureParams {
-                        source: Some(Rect::new(0., 32., 32., 32.)),
-                        ..Default::default()
-                    },
-                })
-                .set(DrawPos {
-                    x: 32.0 * x as f32,
-                    y: 32.0 * y as f32,
-                })
-                .add::<Terrain>();
-        }
-    }
+    let floor_s = FloorSprite {
+        texture: store.get("tiles"),
+        params: DrawTextureParams {
+            source: Some(Rect::new(64., 416., 32., 32.)),
+            ..Default::default()
+        },
+    };
+    let wall_s = WallSprite {
+        texture: store.get("tiles"),
+        params: DrawTextureParams {
+            source: Some(Rect::new(32., 160., 32., 32.)),
+            ..Default::default()
+        },
+    };
+    w.set(floor_s);
+    w.set(wall_s);
+    w.set(store);
 
-    w.system::<&Pos>()
-        .without::<DrawPos>()
-        .each_entity(|e, pos| {
-            e.set(DrawPos::default()); // will be updated in same frame
-        });
-    w.system::<(&Pos, &mut DrawPos)>()
-        .with::<Unit>()
-        .each(move |(pos, dpos)| {
-            dpos.x = 32. * pos.x as f32;
-            dpos.y = 32. * pos.y as f32;
-        });
-    w.system::<(&Sprite, &DrawPos)>()
-        .with::<Terrain>()
-        .kind::<OnStore>()
-        .each(move |(sprite, dp)| {
-            draw_texture_ex(&sprite.texture, dp.x, dp.y, WHITE, sprite.params.clone());
-        });
-    w.system::<(&Sprite, &DrawPos)>()
-        .with::<Unit>()
-        .kind::<OnStore>()
-        .each(move |(sprite, dp)| {
-            draw_texture_ex(&sprite.texture, dp.x, dp.y, WHITE, sprite.params.clone());
-        });
     w.import::<CameraModule>();
+    w.import::<SpriteModule>();
     w.import::<TilemapModule>();
 
-    loop {
-        let camera = Camera2D {
-            zoom: vec2(scale / screen_width(), scale / screen_height()),
-            rotation: 0.,
-            offset: vec2(0., 0.0),
-            target: vec2(screen_width() / scale, screen_height() / scale),
-            render_target: None,
-            viewport: None,
-        };
-        set_camera(&camera);
+    w.system_named::<(&mut WallSprite, &mut FloorSprite)>("SpriteSelector")
+        .term_at(0)
+        .singleton()
+        .term_at(1)
+        .singleton()
+        .each(|(wall_s, floor_s)| {
+            egui_macroquad::ui(|egui_ctx| {
+                egui::Window::new("Sprite selector").show(egui_ctx, |ui| {
+                    if let Some(ref mut rect) = wall_s.params.source {
+                        ui.label("wall sprite:");
+                        ui.add(Slider::new(&mut rect.x, 0.0..=640.0).text("x").step_by(32.0));
+                        ui.add(Slider::new(&mut rect.y, 0.0..=640.0).text("y").step_by(32.0));
+                    }
 
+                    if let Some(ref mut rect) = floor_s.params.source {
+			ui.label("floor sprite:");
+                        ui.add(Slider::new(&mut rect.x, 0.0..=640.0).text("x").step_by(32.0));
+                        ui.add(Slider::new(&mut rect.y, 0.0..=640.0).text("y").step_by(32.0));
+                    }
+                });
+            });
+        });
+
+    loop {
         clear_background(BLACK);
 
         player.get::<&mut Pos>(|pos| {
@@ -183,38 +114,13 @@ async fn main() {
             }
         });
 
-        w.query::<&mut Sprite>()
-            .with::<Terrain>()
-            .build()
-            .each(|sprite| {
-                if let Some(ref mut r) = sprite.params.source {
-                    if is_key_pressed(KeyCode::J) {
-                        r.y += 32.0;
-                    }
-                    if is_key_pressed(KeyCode::K) {
-                        r.y -= 32.0;
-                    }
-                    if is_key_pressed(KeyCode::L) {
-                        r.x += 32.0;
-                    }
-                    if is_key_pressed(KeyCode::H) {
-                        r.x -= 32.0;
-                    }
-                }
-            });
-
-        //draw_texture(&tileset, 50., 50., WHITE);
-
-        let text = format!("{:?}", camera.screen_to_world(mouse_position().into()));
-        draw_text(&text, 20.0, 20.0, 30.0, WHITE);
-
         w.progress();
 
-        egui_macroquad::ui(|egui_ctx| {
-            egui::Window::new("egui ❤ macroquad").show(egui_ctx, |ui| {
-                ui.label("Test");
-            });
-        });
+        // egui_macroquad::ui(|egui_ctx| {
+        //     egui::Window::new("egui ❤ macroquad").show(egui_ctx, |ui| {
+        //         ui.label("Test");
+        //     });
+        // });
 
         egui_macroquad::draw();
         next_frame().await

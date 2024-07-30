@@ -3,8 +3,6 @@ use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
 use tween::{Linear, Tweener};
 
-const DPI_FACTOR: f32 = 1.0;
-
 #[derive(Component)]
 pub struct CameraWrapper {
     pub scale: f32,
@@ -101,6 +99,7 @@ impl CameraWrapper {
         self.camera.screen_to_world(pos).into()
     }
 
+    #[allow(unused)]
     pub fn world_to_screen(&self, pos: impl Into<Vec2>) -> Vec2f {
         let pos = pos.into();
         self.camera.world_to_screen(pos).into()
