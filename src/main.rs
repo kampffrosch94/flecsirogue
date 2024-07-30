@@ -6,6 +6,7 @@ mod vendored;
 use egui::Slider;
 use sprite::*;
 use tilemap::*;
+use util::pos::Pos;
 use vendored::*;
 
 use camera::CameraModule;
@@ -81,14 +82,30 @@ async fn main() {
                 egui::Window::new("Sprite selector").show(egui_ctx, |ui| {
                     if let Some(ref mut rect) = wall_s.params.source {
                         ui.label("wall sprite:");
-                        ui.add(Slider::new(&mut rect.x, 0.0..=640.0).text("x").step_by(32.0));
-                        ui.add(Slider::new(&mut rect.y, 0.0..=640.0).text("y").step_by(32.0));
+                        ui.add(
+                            Slider::new(&mut rect.x, 0.0..=640.0)
+                                .text("x")
+                                .step_by(32.0),
+                        );
+                        ui.add(
+                            Slider::new(&mut rect.y, 0.0..=640.0)
+                                .text("y")
+                                .step_by(32.0),
+                        );
                     }
 
                     if let Some(ref mut rect) = floor_s.params.source {
-			ui.label("floor sprite:");
-                        ui.add(Slider::new(&mut rect.x, 0.0..=640.0).text("x").step_by(32.0));
-                        ui.add(Slider::new(&mut rect.y, 0.0..=640.0).text("y").step_by(32.0));
+                        ui.label("floor sprite:");
+                        ui.add(
+                            Slider::new(&mut rect.x, 0.0..=640.0)
+                                .text("x")
+                                .step_by(32.0),
+                        );
+                        ui.add(
+                            Slider::new(&mut rect.y, 0.0..=640.0)
+                                .text("y")
+                                .step_by(32.0),
+                        );
                     }
                 });
             });
@@ -99,6 +116,7 @@ async fn main() {
 
         player.get::<&mut Pos>(|pos| {
             if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
+                let mut dir = (0, 0);
                 if is_key_pressed(KeyCode::W) {
                     pos.y -= 1;
                 }

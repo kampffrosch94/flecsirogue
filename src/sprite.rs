@@ -5,6 +5,8 @@ use macroquad::prelude::*;
 use std::collections::HashMap;
 use std::ops::Index;
 
+use crate::util::pos::Pos;
+
 #[derive(Default, Component)]
 pub struct TextureStore {
     textures: HashMap<String, Texture2D>,
@@ -33,12 +35,6 @@ impl Index<&str> for TextureStore {
     fn index(&self, index: &str) -> &Self::Output {
         &self.textures[index]
     }
-}
-
-#[derive(Component, Debug)]
-pub struct Pos {
-    pub x: i32,
-    pub y: i32,
 }
 
 #[derive(Component, Debug, Default)]

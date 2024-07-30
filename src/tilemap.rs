@@ -1,10 +1,11 @@
 use std::ops::{Index, IndexMut};
 
 use ::rand::{rngs::StdRng, SeedableRng};
-use derive_more::From;
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
 use mapgen::*;
+
+use crate::Pos;
 
 #[derive(Component)]
 pub struct Tilemap {
@@ -18,15 +19,8 @@ pub enum TileKind {
     Wall,
 }
 
-/// TileMap coordinate
-#[derive(Clone, Copy, Hash, PartialEq, From)]
-struct Coord {
-    x: i32,
-    y: i32,
-}
-
 impl Tilemap {
-    fn index(&self, pos: Coord) -> usize {
+    fn index(&self, pos: Pos) -> usize {
         return (self.w * pos.y + pos.x) as usize;
     }
 
@@ -57,7 +51,7 @@ impl Tilemap {
     }
 }
 
-impl<T: Into<Coord>> Index<T> for Tilemap {
+impl<T: Into<Pos>> Index<T> for Tilemap {
     type Output = TileKind;
 
     fn index(&self, index: T) -> &Self::Output {
@@ -67,7 +61,7 @@ impl<T: Into<Coord>> Index<T> for Tilemap {
     }
 }
 
-impl<T: Into<Coord>> IndexMut<T> for Tilemap {
+impl<T: Into<Pos>> IndexMut<T> for Tilemap {
     fn index_mut(&mut self, index: T) -> &mut Self::Output {
         let pos = index.into();
         let index = self.index(pos);
