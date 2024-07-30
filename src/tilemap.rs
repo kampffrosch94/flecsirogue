@@ -14,6 +14,7 @@ pub struct Tilemap {
     tiles: Vec<TileKind>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TileKind {
     Floor,
     Wall,

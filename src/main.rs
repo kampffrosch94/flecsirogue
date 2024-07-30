@@ -111,26 +111,46 @@ async fn main() {
             });
         });
 
+    w.query::<&Tilemap>().singleton().build().each(|tm| {
+        // TODO maybe switch to grids backend?
+        'outer: for x in 0..tm.w {
+            for y in 0..tm.h {
+                if tm[(x, y)] == TileKind::Floor {
+                    player.get::<&mut Pos>(|pos| {
+                        pos.x = x;
+                        pos.y = y;
+                    });
+                    break 'outer;
+                }
+            }
+        }
+    });
+
     loop {
         clear_background(BLACK);
 
-        player.get::<&mut Pos>(|pos| {
-            if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
-                let mut dir = (0, 0);
-                if is_key_pressed(KeyCode::W) {
-		    dir = (0, -1);
+        w.query::<&Tilemap>().singleton().build().each(|tm| {
+            player.get::<&mut Pos>(|pos| {
+                if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
+                    let mut dir = (0, 0);
+                    if is_key_pressed(KeyCode::W) {
+                        dir = (0, -1);
+                    }
+                    if is_key_pressed(KeyCode::S) {
+                        dir = (0, 1);
+                    }
+                    if is_key_pressed(KeyCode::A) {
+                        dir = (-1, 0);
+                    }
+                    if is_key_pressed(KeyCode::D) {
+                        dir = (1, 0);
+                    }
+                    let new_pos = *pos + dir;
+                    if tm[new_pos] == TileKind::Floor {
+                        *pos = new_pos;
+                    }
                 }
-                if is_key_pressed(KeyCode::S) {
-		    dir = (0, 1);
-                }
-                if is_key_pressed(KeyCode::A) {
-		    dir = (-1, 0);
-                }
-                if is_key_pressed(KeyCode::D) {
-		    dir = (1, 0);
-                }
-		*pos += dir;
-            }
+            });
         });
 
         w.progress();
