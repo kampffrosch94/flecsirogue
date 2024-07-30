@@ -118,17 +118,18 @@ async fn main() {
             if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
                 let mut dir = (0, 0);
                 if is_key_pressed(KeyCode::W) {
-                    pos.y -= 1;
+		    dir = (0, -1);
                 }
                 if is_key_pressed(KeyCode::S) {
-                    pos.y += 1;
+		    dir = (0, 1);
                 }
                 if is_key_pressed(KeyCode::A) {
-                    pos.x -= 1;
+		    dir = (-1, 0);
                 }
                 if is_key_pressed(KeyCode::D) {
-                    pos.x += 1;
+		    dir = (1, 0);
                 }
+		*pos += dir;
             }
         });
 
