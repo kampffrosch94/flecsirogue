@@ -2,6 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use ::rand::{rngs::StdRng, SeedableRng};
 use flecs_ecs::prelude::*;
+use crate::grids;
 use macroquad::prelude::*;
 use mapgen::*;
 
@@ -11,7 +12,7 @@ use crate::Pos;
 pub struct Tilemap {
     pub w: i32,
     pub h: i32,
-    tiles: Vec<TileKind>,
+    pub terrain: Vec<TileKind>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,7 +48,7 @@ impl Tilemap {
         Self {
             w: w as _,
             h: h as _,
-            tiles,
+            terrain: tiles,
         }
     }
 }
@@ -58,7 +59,7 @@ impl<T: Into<Pos>> Index<T> for Tilemap {
     fn index(&self, index: T) -> &Self::Output {
         let pos = index.into();
         let index = self.index(pos);
-        &self.tiles[index]
+        &self.terrain[index]
     }
 }
 
@@ -66,7 +67,7 @@ impl<T: Into<Pos>> IndexMut<T> for Tilemap {
     fn index_mut(&mut self, index: T) -> &mut Self::Output {
         let pos = index.into();
         let index = self.index(pos);
-        &mut self.tiles[index]
+        &mut self.terrain[index]
     }
 }
 
