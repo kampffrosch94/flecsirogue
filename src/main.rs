@@ -72,42 +72,40 @@ async fn main() {
     w.import::<SpriteModule>();
     w.import::<TilemapModule>();
 
-    w.system_named::<(&mut WallSprite, &mut FloorSprite)>("SpriteSelector")
+    w.system_named::<(&mut WallSprite, &mut FloorSprite, &EguiContext)>("SpriteSelector")
         .term_at(0)
         .singleton()
         .term_at(1)
         .singleton()
-        .each(|(wall_s, floor_s)| {
-            egui_macroquad::ui(|egui_ctx| {
-                egui::Window::new("Sprite selector").show(egui_ctx, |ui| {
-                    if let Some(ref mut rect) = wall_s.params.source {
-                        ui.label("wall sprite:");
-                        ui.add(
-                            Slider::new(&mut rect.x, 0.0..=640.0)
-                                .text("x")
-                                .step_by(32.0),
-                        );
-                        ui.add(
-                            Slider::new(&mut rect.y, 0.0..=640.0)
-                                .text("y")
-                                .step_by(32.0),
-                        );
-                    }
+        .each(|(wall_s, floor_s, egui)| {
+            egui::Window::new("Sprite selector").show(egui.ctx, |ui| {
+                if let Some(ref mut rect) = wall_s.params.source {
+                    ui.label("wall sprite:");
+                    ui.add(
+                        Slider::new(&mut rect.x, 0.0..=640.0)
+                            .text("x")
+                            .step_by(32.0),
+                    );
+                    ui.add(
+                        Slider::new(&mut rect.y, 0.0..=640.0)
+                            .text("y")
+                            .step_by(32.0),
+                    );
+                }
 
-                    if let Some(ref mut rect) = floor_s.params.source {
-                        ui.label("floor sprite:");
-                        ui.add(
-                            Slider::new(&mut rect.x, 0.0..=640.0)
-                                .text("x")
-                                .step_by(32.0),
-                        );
-                        ui.add(
-                            Slider::new(&mut rect.y, 0.0..=640.0)
-                                .text("y")
-                                .step_by(32.0),
-                        );
-                    }
-                });
+                if let Some(ref mut rect) = floor_s.params.source {
+                    ui.label("floor sprite:");
+                    ui.add(
+                        Slider::new(&mut rect.x, 0.0..=640.0)
+                            .text("x")
+                            .step_by(32.0),
+                    );
+                    ui.add(
+                        Slider::new(&mut rect.y, 0.0..=640.0)
+                            .text("y")
+                            .step_by(32.0),
+                    );
+                }
             });
         });
 
@@ -153,17 +151,30 @@ async fn main() {
             });
         });
 
-        w.progress();
 
-        // egui_macroquad::ui(|egui_ctx| {
-        //     egui::Window::new("egui ❤ macroquad").show(egui_ctx, |ui| {
-        //         ui.label("Test");
-        //     });
-        // });
+        egui_macroquad::ui(|egui_ctx| {
+            let wrapper = EguiContext {
+		// UNSAFE: we extend the liftetime to 'static so that
+		// we can store the reference in a singleton
+		// do not forgot to remove it before the egui context goes out of scope
+                ctx: unsafe { std::mem::transmute(egui_ctx) },
+            };
+            w.set(wrapper);
+            w.progress();
+            egui::Window::new("egui ❤ macroquad").show(egui_ctx, |ui| {
+                ui.label("Test");
+            });
+            w.remove::<EguiContext>();
+        });
 
         egui_macroquad::draw();
         next_frame().await
     }
+}
+
+#[derive(Component)]
+pub struct EguiContext {
+    pub ctx: &'static egui::Context,
 }
 
 #[test]

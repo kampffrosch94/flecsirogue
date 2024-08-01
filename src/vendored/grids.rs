@@ -1,7 +1,10 @@
 #![allow(unused)]
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, Index, IndexMut, Mul};
+use std::{
+    collections::HashSet,
+    ops::{Add, Index, IndexMut, Mul},
+};
 
 use crate::util::pos::Pos;
 
@@ -104,6 +107,31 @@ impl<T: Clone> Grid<T> {
         coords.into_iter().map(|(x, y)| (x, y, &self[(x, y)]))
     }
 
+    pub fn iter_rect_mut(
+        &mut self,
+        min: Pos,
+        max: Pos,
+    ) -> impl Iterator<Item = (i32, i32, &mut T)> {
+        let mut coords = HashSet::new();
+
+        for x in min.x..max.x {
+            for y in min.y..max.y {
+                coords.insert((x, y));
+            }
+        }
+
+        self.data
+            .iter_mut()
+            .enumerate()
+            .map(|(i, v)| {
+                let i = i as i32;
+                let x = i % self.width;
+                let y = i / self.height;
+                (x, y, v)
+            })
+            .filter(move |(x, y, _)| coords.contains(&(*x, *y)))
+    }
+
     pub fn clone_rect(&self, min: Pos, max: Pos) -> Grid<T> {
         let dims = max - min.into();
         let mut result = Grid::new(dims.x, dims.y, self[(0i32, 0i32)].clone());
@@ -195,7 +223,7 @@ impl<T: Clone> Grid<T> {
 
         let mut result = Grid::new(size.x, size.y, fill.clone());
 
-        let mut offset = Pos::new(0,0);
+        let mut offset = Pos::new(0, 0);
 
         for grid in grids.iter() {
             for (x, y, val) in grid.iter() {
@@ -410,7 +438,6 @@ impl<T: Clone> IndexMut<Pos> for Grid<T> {
         &mut self[(index.x, index.y)]
     }
 }
-
 
 #[test]
 fn test_stuff() {
