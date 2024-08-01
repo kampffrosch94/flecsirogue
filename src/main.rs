@@ -110,7 +110,6 @@ async fn main() {
         });
 
     w.query::<&Tilemap>().singleton().build().each(|tm| {
-        // TODO maybe switch to grids backend?
         'outer: for x in 0..tm.w {
             for y in 0..tm.h {
                 if tm[(x, y)] == TileKind::Floor {
@@ -152,6 +151,8 @@ async fn main() {
         });
 
 
+	// unfortunately we can not call this method twice without completely refactoring
+	// egui macroquad, so we wrap it around w.progress()
         egui_macroquad::ui(|egui_ctx| {
             let wrapper = EguiContext {
 		// UNSAFE: we extend the liftetime to 'static so that
