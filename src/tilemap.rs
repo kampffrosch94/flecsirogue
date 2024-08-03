@@ -1,12 +1,8 @@
-use std::{
-    collections::HashSet,
-    ops::{Index, IndexMut, Not},
-};
+use std::ops::{Index, IndexMut};
 
 use crate::{grids::Grid, Player};
 use ::rand::{rngs::StdRng, SeedableRng};
 use flecs_ecs::prelude::*;
-use itertools::Itertools;
 use macroquad::prelude::*;
 use mapgen::*;
 
@@ -115,9 +111,15 @@ impl Module for TilemapModule {
             .singleton()
             .with::<Player>()
             .each(|(tm, player_pos)| {
-                for pos in floodfill_vision(tm, *player_pos) {
-                    tm.visibility[pos] = Visibility::Seen;
-                }
+                let terrain = &tm.terrain;
+                let visibility = &mut tm.visibility;
+                let mut blocks_vision = |pos| terrain[Pos::from(pos)] == TileKind::Wall;
+                let mut mark_visible = |pos| visibility[Pos::from(pos)] = Visibility::Seen;
+                symmetric_shadowcasting::compute_fov(
+                    player_pos.into(),
+                    &mut blocks_vision,
+                    &mut mark_visible,
+                );
             });
 
         world
@@ -149,35 +151,4 @@ impl Module for TilemapModule {
                 }
             });
     }
-}
-
-pub fn floodfill_vision(tm: &TileMap, start: Pos) -> Vec<Pos> {
-    const VISION_RANGE: i32 = 5;
-    let mut working_set = vec![start];
-    let mut visible = HashSet::new();
-    visible.insert(start);
-
-    while !working_set.is_empty() {
-        for pos in working_set.drain(..).collect_vec() {
-            for nb in pos.neighbors() {
-                const WORKING_RANGE: i32 = VISION_RANGE - 1;
-                match (nb.distance(start), tm[nb]) {
-                    (0..=WORKING_RANGE, TileKind::Floor) => {
-                        if visible.contains(&nb).not() {
-                            working_set.push(nb);
-                        }
-                        visible.insert(nb);
-                    }
-                    (0..=WORKING_RANGE, TileKind::Wall) => {
-                        visible.insert(nb);
-                    }
-                    (VISION_RANGE, _) => {
-                        visible.insert(nb);
-                    }
-                    _ => panic!("should be unreachable"),
-                }
-            }
-        }
-    }
-    visible.into_iter().collect()
 }

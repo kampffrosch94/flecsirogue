@@ -98,3 +98,18 @@ impl Sub<(i32, i32)> for Pos {
         }
     }
 }
+
+impl Into<(isize, isize)> for &Pos {
+    fn into(self) -> (isize, isize) {
+        (self.x as _, self.y as _)
+    }
+}
+
+impl From<(isize, isize)> for Pos {
+    fn from(value: (isize, isize)) -> Self {
+        Self {
+            x: value.0 as _,
+            y: value.1 as _,
+        }
+    }
+}
