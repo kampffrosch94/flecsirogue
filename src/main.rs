@@ -109,7 +109,7 @@ async fn main() {
             });
         });
 
-    w.query::<&Tilemap>().singleton().build().each(|tm| {
+    w.query::<&TileMap>().singleton().build().each(|tm| {
         'outer: for x in 0..tm.w {
             for y in 0..tm.h {
                 if tm[(x, y)] == TileKind::Floor {
@@ -126,7 +126,7 @@ async fn main() {
     loop {
         clear_background(BLACK);
 
-        w.query::<&Tilemap>().singleton().build().each(|tm| {
+        w.query::<&TileMap>().singleton().build().each(|tm| {
             player.get::<&mut Pos>(|pos| {
                 if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
                     let mut dir = (0, 0);
@@ -150,14 +150,13 @@ async fn main() {
             });
         });
 
-
-	// unfortunately we can not call this method twice without completely refactoring
-	// egui macroquad, so we wrap it around w.progress()
+        // unfortunately we can not call this method twice without completely refactoring
+        // egui macroquad, so we wrap it around w.progress()
         egui_macroquad::ui(|egui_ctx| {
             let wrapper = EguiContext {
-		// UNSAFE: we extend the liftetime to 'static so that
-		// we can store the reference in a singleton
-		// do not forgot to remove it before the egui context goes out of scope
+                // UNSAFE: we extend the liftetime to 'static so that
+                // we can store the reference in a singleton
+                // do not forgot to remove it before the egui context goes out of scope
                 ctx: unsafe { std::mem::transmute(egui_ctx) },
             };
             w.set(wrapper);

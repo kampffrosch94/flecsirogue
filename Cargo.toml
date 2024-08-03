@@ -15,6 +15,7 @@ rand = "0.8.5"
 # egui integration
 egui-miniquad = {git = "https://github.com/kampffrosch94/egui-miniquad", branch = "miniquad_update"}
 egui = "*"
+itertools = "0.13.0"
 
 [profile.dev]
 opt-level = 1

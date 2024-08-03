@@ -5,7 +5,7 @@ use derive_more::From;
 use derive_more::Into;
 use flecs_ecs::prelude::Component;
 
-#[derive(Clone, Copy, Hash, PartialEq, From, Into, Debug, Component)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, From, Into, Debug, Component)]
 pub struct Pos {
     pub x: i32,
     pub y: i32,
@@ -17,7 +17,7 @@ impl Pos {
     }
 
     #[allow(dead_code)]
-    pub fn circle_around(self, radius: u32) -> Vec<Self> {
+    pub fn circle_around(&self, radius: u32) -> Vec<Self> {
         let mut result = Vec::new();
         let px: i32 = self.x;
         let py: i32 = self.y;
@@ -44,7 +44,7 @@ impl Pos {
     /// Gives the neighboring tiles to a Position
     /// Excludes borders
     /// Includes walls and empty Tiles
-    pub fn neighbors(self) -> Vec<Self> {
+    pub fn neighbors(&self) -> Vec<Self> {
         let x = self.x as i32;
         let y = self.y as i32;
         let poss: Vec<(i32, i32)> = vec![
@@ -61,6 +61,12 @@ impl Pos {
             .filter(|&(x, y)| x >= 0 || y >= 0)
             .map(Into::into)
             .collect()
+    }
+
+    pub fn distance(&self, other: Self) -> i32 {
+        let dx = i32::abs(self.x - other.x);
+        let dy = i32::abs(self.y - other.y);
+        i32::max(dx, dy)
     }
 }
 

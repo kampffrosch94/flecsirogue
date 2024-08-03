@@ -1,15 +1,19 @@
-use std::ops::{Index, IndexMut};
+use std::{
+    collections::HashSet,
+    ops::{Index, IndexMut, Not},
+};
 
 use crate::{grids::Grid, Player};
 use ::rand::{rngs::StdRng, SeedableRng};
 use flecs_ecs::prelude::*;
+use itertools::Itertools;
 use macroquad::prelude::*;
 use mapgen::*;
 
 use crate::Pos;
 
 #[derive(Component)]
-pub struct Tilemap {
+pub struct TileMap {
     pub w: i32,
     pub h: i32,
     pub terrain: Grid<TileKind>,
@@ -29,7 +33,7 @@ pub enum Visibility {
     Remembered,
 }
 
-impl Tilemap {
+impl TileMap {
     pub fn new() -> Self {
         let mut rng = StdRng::seed_from_u64(2234);
         let (w, h): (i32, i32) = (40, 40);
@@ -58,7 +62,7 @@ impl Tilemap {
     }
 }
 
-impl<T: Into<Pos>> Index<T> for Tilemap {
+impl<T: Into<Pos>> Index<T> for TileMap {
     type Output = TileKind;
 
     fn index(&self, index: T) -> &Self::Output {
@@ -67,7 +71,7 @@ impl<T: Into<Pos>> Index<T> for Tilemap {
     }
 }
 
-impl<T: Into<Pos>> IndexMut<T> for Tilemap {
+impl<T: Into<Pos>> IndexMut<T> for TileMap {
     fn index_mut(&mut self, index: T) -> &mut Self::Output {
         let pos = index.into();
         &mut self.terrain[pos]
@@ -91,10 +95,10 @@ pub struct TilemapModule {}
 
 impl Module for TilemapModule {
     fn module(world: &flecs_ecs::prelude::World) {
-        world.set(Tilemap::new());
+        world.set(TileMap::new());
 
         world
-            .system_named::<&mut Tilemap>("FOVClear")
+            .system_named::<&mut TileMap>("FOVClear")
             .term_at(0)
             .singleton()
             .each(|tm| {
@@ -106,20 +110,18 @@ impl Module for TilemapModule {
                 }
             });
         world
-            .system_named::<(&mut Tilemap, &Pos)>("FOVRefresh")
+            .system_named::<(&mut TileMap, &Pos)>("FOVRefresh")
             .term_at(0)
             .singleton()
             .with::<Player>()
             .each(|(tm, player_pos)| {
-                let start = *player_pos - (3, 3);
-                let end = *player_pos + (3, 3);
-                for (_x, _y, v) in tm.visibility.iter_rect_mut(start, end) {
-                    *v = Visibility::Seen;
+                for pos in floodfill_vision(tm, *player_pos) {
+                    tm.visibility[pos] = Visibility::Seen;
                 }
             });
 
         world
-            .system_named::<(&Tilemap, &WallSprite, &FloorSprite)>("DrawTilemap")
+            .system_named::<(&TileMap, &WallSprite, &FloorSprite)>("DrawTilemap")
             .term_at(0)
             .singleton()
             .term_at(1)
@@ -147,4 +149,35 @@ impl Module for TilemapModule {
                 }
             });
     }
+}
+
+pub fn floodfill_vision(tm: &TileMap, start: Pos) -> Vec<Pos> {
+    const VISION_RANGE: i32 = 5;
+    let mut working_set = vec![start];
+    let mut visible = HashSet::new();
+    visible.insert(start);
+
+    while !working_set.is_empty() {
+        for pos in working_set.drain(..).collect_vec() {
+            for nb in pos.neighbors() {
+                const WORKING_RANGE: i32 = VISION_RANGE - 1;
+                match (nb.distance(start), tm[nb]) {
+                    (0..=WORKING_RANGE, TileKind::Floor) => {
+                        if visible.contains(&nb).not() {
+                            working_set.push(nb);
+                        }
+                        visible.insert(nb);
+                    }
+                    (0..=WORKING_RANGE, TileKind::Wall) => {
+                        visible.insert(nb);
+                    }
+                    (VISION_RANGE, _) => {
+                        visible.insert(nb);
+                    }
+                    _ => panic!("should be unreachable"),
+                }
+            }
+        }
+    }
+    visible.into_iter().collect()
 }
