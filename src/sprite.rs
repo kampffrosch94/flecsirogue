@@ -43,7 +43,7 @@ pub struct DrawPos {
     pub y: f32,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Clone)]
 pub struct Sprite {
     pub texture: Texture2D,
     pub params: DrawTextureParams,

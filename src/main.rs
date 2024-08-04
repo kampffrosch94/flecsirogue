@@ -13,6 +13,7 @@ use camera::CameraModule;
 
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
+use macroquad::rand::ChooseRandom;
 
 fn window_conf() -> Conf {
     Conf {
@@ -38,17 +39,21 @@ async fn main() {
         .load_texture("assets/32rogues/tiles.png", "tiles")
         .await
         .unwrap();
-    let player = w
-        .entity_named("Player")
-        .set(Pos { x: 3, y: 3 })
-        .add::<Player>()
-        .set(Sprite {
-            texture: store.get("rogues"),
-            params: DrawTextureParams {
-                source: Some(Rect::new(0., 0., 32., 32.)),
-                ..Default::default()
-            },
-        });
+    let player = w.entity_named("Player").add::<Player>().set(Sprite {
+        texture: store.get("rogues"),
+        params: DrawTextureParams {
+            source: Some(Rect::new(0., 0., 32., 32.)),
+            ..Default::default()
+        },
+    });
+
+    let enemy_sprite = Sprite {
+        texture: store.get("rogues"),
+        params: DrawTextureParams {
+            source: Some(Rect::new(0., 0., 32., 32.)),
+            ..Default::default()
+        },
+    };
 
     let floor_s = FloorSprite {
         texture: store.get("tiles"),
@@ -109,19 +114,29 @@ async fn main() {
             });
         });
 
+    let mut free_positions = Vec::new();
     w.query::<&TileMap>().singleton().build().each(|tm| {
-        'outer: for x in 0..tm.w {
+        for x in 0..tm.w {
             for y in 0..tm.h {
-                if tm[(x, y)] == TileKind::Floor {
-                    player.get::<&mut Pos>(|pos| {
-                        pos.x = x;
-                        pos.y = y;
-                    });
-                    break 'outer;
+                let pos = Pos::new(x, y);
+                if tm[pos] == TileKind::Floor {
+                    free_positions.push(pos);
                 }
             }
         }
     });
+
+    // TODO think about reproduceable seeds
+    free_positions.shuffle();
+
+    player.set(free_positions.pop().unwrap());
+    // place enemies
+    for _ in 0..10 {
+        w.entity()
+            .add::<Unit>()
+            .set(enemy_sprite.clone())
+            .set(free_positions.pop().unwrap());
+    }
 
     loop {
         clear_background(BLACK);
