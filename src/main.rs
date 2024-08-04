@@ -1,9 +1,12 @@
 mod camera;
+mod game;
 mod sprite;
 mod tilemap;
 mod util;
 mod vendored;
+
 use egui::Slider;
+use game::Health;
 use sprite::*;
 use tilemap::*;
 use util::pos::Pos;
@@ -149,12 +152,14 @@ async fn main() {
         w.entity()
             .add::<Unit>()
             .set(enemy_sprite.clone())
+            .set(Health { max: 3, current: 3 })
             .set(free_positions.pop().unwrap());
     }
 
     loop {
         clear_background(BLACK);
 
+        // move player
         w.query::<&TileMap>().singleton().build().each(|tm| {
             player.get::<&mut Pos>(|pos| {
                 if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
@@ -175,8 +180,18 @@ async fn main() {
                             new_pos += dir;
                         }
                     }
-                    if tm[new_pos] == TileKind::Floor {
-                        *pos = new_pos;
+
+                    if new_pos != *pos { // check that we do not hit ourselves
+                        let is_floor = tm.terrain[new_pos] == TileKind::Floor;
+                        let maybe_blocker = tm.units.get(&new_pos);
+                        let not_blocked = maybe_blocker.is_none();
+                        if is_floor && not_blocked {
+                            *pos = new_pos;
+                        }
+                        if let Some(other_entity) = maybe_blocker {
+                            let other = other_entity.id_view(&w).get_entity_view().unwrap();
+                            other.get::<&mut Health>(|health| health.current -= 2);
+                        }
                     }
                 }
             });
