@@ -87,6 +87,9 @@ pub struct FloorSprite {
 }
 
 #[derive(Component)]
+pub struct Visible {}
+
+#[derive(Component)]
 pub struct TilemapModule {}
 
 impl Module for TilemapModule {
@@ -113,6 +116,7 @@ impl Module for TilemapModule {
             .each(|(tm, player_pos)| {
                 let terrain = &tm.terrain;
                 let visibility = &mut tm.visibility;
+		// TODO add max vision length by blocking everything from some range?
                 let mut blocks_vision = |pos| terrain[Pos::from(pos)] == TileKind::Wall;
                 let mut mark_visible = |pos| visibility[Pos::from(pos)] = Visibility::Seen;
                 symmetric_shadowcasting::compute_fov(
@@ -121,6 +125,19 @@ impl Module for TilemapModule {
                     &mut mark_visible,
                 );
             });
+
+        world
+            .system_named::<(&mut TileMap, &Pos)>("FOVMarkVisible")
+            .term_at(0)
+            .singleton()
+            .with::<&mut Visible>()
+            .optional()
+            .each_entity(|e, (tm, pos)| {
+		match tm.visibility[*pos] {
+		    Visibility::Seen => e.add::<Visible>(),
+		    _ => e.remove::<Visible>(),
+		};
+	    });
 
         world
             .system_named::<(&TileMap, &WallSprite, &FloorSprite)>("DrawTilemap")

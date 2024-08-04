@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::ops::Index;
 
 use crate::util::pos::Pos;
+use crate::Visible;
 
 #[derive(Default, Component)]
 pub struct TextureStore {
@@ -74,6 +75,7 @@ impl Module for SpriteModule {
                 dpos.y = 32. * pos.y as f32;
             });
         w.system::<(&Sprite, &DrawPos)>()
+            .with::<Visible>()
             .with::<Unit>()
             .kind::<OnStore>()
             .each(move |(sprite, dp)| {
