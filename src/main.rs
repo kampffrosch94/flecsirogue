@@ -39,6 +39,10 @@ async fn main() {
         .load_texture("assets/32rogues/tiles.png", "tiles")
         .await
         .unwrap();
+    store
+        .load_texture("assets/32rogues/monsters.png", "monsters")
+        .await
+        .unwrap();
     let player = w.entity_named("Player").add::<Player>().set(Sprite {
         texture: store.get("rogues"),
         params: DrawTextureParams {
@@ -48,7 +52,7 @@ async fn main() {
     });
 
     let enemy_sprite = Sprite {
-        texture: store.get("rogues"),
+        texture: store.get("monsters"),
         params: DrawTextureParams {
             source: Some(Rect::new(0., 0., 32., 32.)),
             ..Default::default()
