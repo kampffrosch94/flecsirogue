@@ -1,6 +1,9 @@
-use std::ops::{Index, IndexMut};
+use std::{
+    collections::HashMap,
+    ops::{Index, IndexMut},
+};
 
-use crate::{grids::Grid, Player};
+use crate::{grids::Grid, Player, Sprite};
 use ::rand::{rngs::StdRng, SeedableRng};
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
@@ -14,6 +17,7 @@ pub struct TileMap {
     pub h: i32,
     pub terrain: Grid<TileKind>,
     pub visibility: Grid<Visibility>,
+    pub units: HashMap<Pos, Entity>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,6 +58,7 @@ impl TileMap {
             h,
             terrain,
             visibility,
+            units: Default::default(),
         }
     }
 }
@@ -76,8 +81,8 @@ impl<T: Into<Pos>> IndexMut<T> for TileMap {
 
 #[derive(Component)]
 pub struct WallSprite {
-    pub texture: Texture2D,
-    pub params: DrawTextureParams,
+    pub upper: Sprite,
+    pub lower: Sprite,
 }
 
 #[derive(Component)]
@@ -97,7 +102,23 @@ impl Module for TilemapModule {
         world.set(TileMap::new());
 
         world
-            .system_named::<&mut TileMap>("FOVClear")
+            .system_named::<&mut TileMap>("TileMap:UnitClearPos")
+            .term_at(0)
+            .singleton()
+            .each(|tm| {
+                tm.units.clear();
+            });
+
+        world
+            .system_named::<(&mut TileMap, &Pos)>("TileMap:UnitUpdatePos")
+            .term_at(0)
+            .singleton()
+            .each_entity(|e, (tm, pos)| {
+                tm.units.insert(*pos, *e);
+            });
+
+        world
+            .system_named::<&mut TileMap>("TileMap:FOVClear")
             .term_at(0)
             .singleton()
             .each(|tm| {
@@ -109,14 +130,14 @@ impl Module for TilemapModule {
                 }
             });
         world
-            .system_named::<(&mut TileMap, &Pos)>("FOVRefresh")
+            .system_named::<(&mut TileMap, &Pos)>("TileMap:FOVRefresh")
             .term_at(0)
             .singleton()
             .with::<Player>()
             .each(|(tm, player_pos)| {
                 let terrain = &tm.terrain;
                 let visibility = &mut tm.visibility;
-		// TODO add max vision length by blocking everything from some range?
+                // TODO add max vision length by blocking everything from some range?
                 let mut blocks_vision = |pos| terrain[Pos::from(pos)] == TileKind::Wall;
                 let mut mark_visible = |pos| visibility[Pos::from(pos)] = Visibility::Seen;
                 symmetric_shadowcasting::compute_fov(
@@ -127,20 +148,20 @@ impl Module for TilemapModule {
             });
 
         world
-            .system_named::<(&mut TileMap, &Pos)>("FOVMarkVisible")
+            .system_named::<(&mut TileMap, &Pos)>("TileMap:FOVMarkVisibleUnits")
             .term_at(0)
             .singleton()
             .with::<&mut Visible>()
             .optional()
             .each_entity(|e, (tm, pos)| {
-		match tm.visibility[*pos] {
-		    Visibility::Seen => e.add::<Visible>(),
-		    _ => e.remove::<Visible>(),
-		};
-	    });
+                match tm.visibility[*pos] {
+                    Visibility::Seen => e.add::<Visible>(),
+                    _ => e.remove::<Visible>(),
+                };
+            });
 
         world
-            .system_named::<(&TileMap, &WallSprite, &FloorSprite)>("DrawTilemap")
+            .system_named::<(&TileMap, &WallSprite, &FloorSprite)>("TileMap:DrawTilemap")
             .term_at(0)
             .singleton()
             .term_at(1)
@@ -161,7 +182,11 @@ impl Module for TilemapModule {
                             draw_texture_ex(&s.texture, fx, fy, color, s.params.clone());
                         }
                         TileKind::Wall => {
-                            let s = wall_s;
+                            let below = pos + (0, 1);
+                            let s = match tm.terrain.get_opt(below) {
+                                Some(TileKind::Wall) => &wall_s.upper,
+                                _ => &wall_s.lower,
+                            };
                             draw_texture_ex(&s.texture, fx, fy, color, s.params.clone());
                         }
                     };

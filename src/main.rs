@@ -67,12 +67,22 @@ async fn main() {
         },
     };
     let wall_s = WallSprite {
-        texture: store.get("tiles"),
-        params: DrawTextureParams {
-            source: Some(Rect::new(32., 160., 32., 32.)),
-            ..Default::default()
+        lower: Sprite {
+            texture: store.get("tiles"),
+            params: DrawTextureParams {
+                source: Some(Rect::new(32., 160., 32., 32.)),
+                ..Default::default()
+            },
+        },
+        upper: Sprite {
+            texture: store.get("tiles"),
+            params: DrawTextureParams {
+                source: Some(Rect::new(0., 160., 32., 32.)),
+                ..Default::default()
+            },
         },
     };
+
     w.set(floor_s);
     w.set(wall_s);
     w.set(store);
@@ -88,7 +98,7 @@ async fn main() {
         .singleton()
         .each(|(wall_s, floor_s, egui)| {
             egui::Window::new("Sprite selector").show(egui.ctx, |ui| {
-                if let Some(ref mut rect) = wall_s.params.source {
+                if let Some(ref mut rect) = wall_s.lower.params.source {
                     ui.label("wall sprite:");
                     ui.add(
                         Slider::new(&mut rect.x, 0.0..=640.0)
@@ -148,20 +158,23 @@ async fn main() {
         w.query::<&TileMap>().singleton().build().each(|tm| {
             player.get::<&mut Pos>(|pos| {
                 if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
-                    let mut dir = (0, 0);
-                    if is_key_pressed(KeyCode::W) {
-                        dir = (0, -1);
+                    let direction_keys = [
+                        (KeyCode::Kp1, (-1, 1)),
+                        (KeyCode::Kp2, (0, 1)),
+                        (KeyCode::Kp3, (1, 1)),
+                        (KeyCode::Kp4, (-1, 0)),
+                        (KeyCode::Kp5, (0, 0)),
+                        (KeyCode::Kp6, (1, 0)),
+                        (KeyCode::Kp7, (-1, -1)),
+                        (KeyCode::Kp8, (0, -1)),
+                        (KeyCode::Kp9, (1, -1)),
+                    ];
+                    let mut new_pos = *pos;
+                    for (key, dir) in direction_keys {
+                        if is_key_pressed(key) {
+                            new_pos += dir;
+                        }
                     }
-                    if is_key_pressed(KeyCode::S) {
-                        dir = (0, 1);
-                    }
-                    if is_key_pressed(KeyCode::A) {
-                        dir = (-1, 0);
-                    }
-                    if is_key_pressed(KeyCode::D) {
-                        dir = (1, 0);
-                    }
-                    let new_pos = *pos + dir;
                     if tm[new_pos] == TileKind::Floor {
                         *pos = new_pos;
                     }
