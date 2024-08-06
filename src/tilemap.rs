@@ -3,7 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::{grids::Grid, Player, Sprite};
+use crate::{game::Player, grids::Grid, Sprite};
 use ::rand::{rngs::StdRng, SeedableRng};
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;

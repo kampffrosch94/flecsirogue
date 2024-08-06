@@ -6,7 +6,7 @@ mod util;
 mod vendored;
 
 use egui::Slider;
-use game::Health;
+use game::{GameModule, Health, MessageLog, Player, Unit};
 use sprite::*;
 use tilemap::*;
 use util::pos::Pos;
@@ -90,6 +90,7 @@ async fn main() {
     w.set(wall_s);
     w.set(store);
 
+    w.import::<GameModule>();
     w.import::<CameraModule>();
     w.import::<SpriteModule>();
     w.import::<TilemapModule>();
@@ -150,9 +151,11 @@ async fn main() {
     // place enemies
     for _ in 0..10 {
         w.entity()
-            .add::<Unit>()
+            .set(Unit {
+                name: "Goblin".into(),
+                health: Health { max: 3, current: 3 },
+            })
             .set(enemy_sprite.clone())
-            .set(Health { max: 3, current: 3 })
             .set(free_positions.pop().unwrap());
     }
 
@@ -160,42 +163,54 @@ async fn main() {
         clear_background(BLACK);
 
         // move player
-        w.query::<&TileMap>().singleton().build().each(|tm| {
-            player.get::<&mut Pos>(|pos| {
-                if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
-                    let direction_keys = [
-                        (KeyCode::Kp1, (-1, 1)),
-                        (KeyCode::Kp2, (0, 1)),
-                        (KeyCode::Kp3, (1, 1)),
-                        (KeyCode::Kp4, (-1, 0)),
-                        (KeyCode::Kp5, (0, 0)),
-                        (KeyCode::Kp6, (1, 0)),
-                        (KeyCode::Kp7, (-1, -1)),
-                        (KeyCode::Kp8, (0, -1)),
-                        (KeyCode::Kp9, (1, -1)),
-                    ];
-                    let mut new_pos = *pos;
-                    for (key, dir) in direction_keys {
-                        if is_key_pressed(key) {
-                            new_pos += dir;
+        w.query::<(&TileMap, &mut MessageLog)>()
+            .term_at(0)
+            .singleton()
+            .term_at(1)
+            .singleton()
+            .build()
+            .each(|(tm, ml)| {
+                player.get::<&mut Pos>(|pos| {
+                    if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
+                        let direction_keys = [
+                            (KeyCode::Kp1, (-1, 1)),
+                            (KeyCode::Kp2, (0, 1)),
+                            (KeyCode::Kp3, (1, 1)),
+                            (KeyCode::Kp4, (-1, 0)),
+                            (KeyCode::Kp5, (0, 0)),
+                            (KeyCode::Kp6, (1, 0)),
+                            (KeyCode::Kp7, (-1, -1)),
+                            (KeyCode::Kp8, (0, -1)),
+                            (KeyCode::Kp9, (1, -1)),
+                        ];
+                        let mut new_pos = *pos;
+                        for (key, dir) in direction_keys {
+                            if is_key_pressed(key) {
+                                new_pos += dir;
+                            }
                         }
-                    }
 
-                    if new_pos != *pos { // check that we do not hit ourselves
-                        let is_floor = tm.terrain[new_pos] == TileKind::Floor;
-                        let maybe_blocker = tm.units.get(&new_pos);
-                        let not_blocked = maybe_blocker.is_none();
-                        if is_floor && not_blocked {
-                            *pos = new_pos;
-                        }
-                        if let Some(other_entity) = maybe_blocker {
-                            let other = other_entity.id_view(&w).get_entity_view().unwrap();
-                            other.get::<&mut Health>(|health| health.current -= 2);
+                        if new_pos != *pos {
+                            // check that we do not hit ourselves
+                            let is_floor = tm.terrain[new_pos] == TileKind::Floor;
+                            let maybe_blocker = tm.units.get(&new_pos);
+                            let not_blocked = maybe_blocker.is_none();
+                            if is_floor && not_blocked {
+                                *pos = new_pos;
+                            }
+                            if let Some(other_entity) = maybe_blocker {
+                                let other = other_entity.id_view(&w).get_entity_view().unwrap();
+                                let mut s = String::new();
+                                other.get::<&mut Unit>(|unit| {
+                                    unit.health.current -= 2;
+                                    s = unit.name.clone();
+                                });
+                                ml.messages.push(format!("You hit the {s}."));
+                            }
                         }
                     }
-                }
+                });
             });
-        });
 
         // unfortunately we can not call this method twice without completely refactoring
         // egui macroquad, so we wrap it around w.progress()

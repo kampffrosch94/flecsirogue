@@ -5,6 +5,7 @@ use macroquad::prelude::*;
 use std::collections::HashMap;
 use std::ops::Index;
 
+use crate::game::{Player, Unit};
 use crate::util::pos::Pos;
 use crate::Visible;
 
@@ -50,19 +51,11 @@ pub struct Sprite {
     pub params: DrawTextureParams,
 }
 
-#[derive(Component, Debug)]
-pub struct Player;
-
-#[derive(Component, Debug)]
-pub struct Unit;
-
 #[derive(Component)]
 pub struct SpriteModule {}
 
 impl Module for SpriteModule {
     fn module(w: &World) {
-        w.component::<Player>().is_a::<Unit>();
-
         w.system::<&Pos>()
             .without::<DrawPos>()
             .each_entity(|e, _pos| {
