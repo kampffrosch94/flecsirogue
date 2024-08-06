@@ -5,7 +5,7 @@ use macroquad::prelude::*;
 use std::collections::HashMap;
 use std::ops::Index;
 
-use crate::game::{Player, Unit};
+use crate::game::Unit;
 use crate::util::pos::Pos;
 use crate::Visible;
 

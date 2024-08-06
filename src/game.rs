@@ -27,7 +27,6 @@ pub struct GameModule {}
 
 impl Module for GameModule {
     fn module(world: &World) {
-        world.component::<Player>().is_a::<Unit>();
         world.set(MessageLog::default());
         world
             .system_named::<(&mut MessageLog, &Unit)>("UnitRemoveDead")
@@ -36,6 +35,7 @@ impl Module for GameModule {
             .each_entity(|entity, (ml, unit)| {
                 if unit.health.current <= 0 {
                     ml.messages.push(format!("{} dies.", unit.name));
+                    println!("Deleting an entitiy. {:?}", entity);
                     entity.destruct();
                 }
             });

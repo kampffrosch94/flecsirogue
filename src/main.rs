@@ -46,13 +46,23 @@ async fn main() {
         .load_texture("assets/32rogues/monsters.png", "monsters")
         .await
         .unwrap();
-    let player = w.entity_named("Player").add::<Player>().set(Sprite {
-        texture: store.get("rogues"),
-        params: DrawTextureParams {
-            source: Some(Rect::new(0., 0., 32., 32.)),
-            ..Default::default()
-        },
-    });
+    let player = w
+        .entity_named("Player")
+        .set(Unit {
+            name: "Player".into(),
+            health: Health {
+                max: 10,
+                current: 10,
+            },
+        })
+        .add::<Player>()
+        .set(Sprite {
+            texture: store.get("rogues"),
+            params: DrawTextureParams {
+                source: Some(Rect::new(0., 0., 32., 32.)),
+                ..Default::default()
+            },
+        });
 
     let enemy_sprite = Sprite {
         texture: store.get("monsters"),
@@ -200,12 +210,10 @@ async fn main() {
                             }
                             if let Some(other_entity) = maybe_blocker {
                                 let other = other_entity.id_view(&w).get_entity_view().unwrap();
-                                let mut s = String::new();
                                 other.get::<&mut Unit>(|unit| {
                                     unit.health.current -= 2;
-                                    s = unit.name.clone();
+                                    ml.messages.push(format!("You hit the {}.", unit.name));
                                 });
-                                ml.messages.push(format!("You hit the {s}."));
                             }
                         }
                     }
