@@ -6,6 +6,7 @@ use derive_more::Into;
 use flecs_ecs::prelude::Component;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, From, Into, Debug, Component)]
+#[meta]
 pub struct Pos {
     pub x: i32,
     pub y: i32,

@@ -31,14 +31,17 @@ fn window_conf() -> Conf {
 async fn main() {
     let world = World::new();
 
-    // Creates REST server on default port (27750)
-    world.import::<stats::Stats>(); // stats for explorer
-    world.set(flecs::rest::Rest::default());
+    world.component::<Pos>().meta();
+    world.component::<DrawPos>().meta();
 
     world.import::<GameModule>();
     world.import::<CameraModule>();
     world.import::<SpriteModule>();
     world.import::<TilemapModule>();
+
+    // Creates REST server on default port (27750)
+    world.import::<stats::Stats>(); // stats for explorer
+    world.set(flecs::rest::Rest::default());
 
     // not sure how to move the TextureStore into a module since it uses async for loading
     // resources
@@ -56,7 +59,7 @@ async fn main() {
         .await
         .unwrap();
     let player = world
-        .entity_named("Player")
+        .entity_named("PlayerCharacter")
         .set(Unit {
             name: "Player".into(),
             health: Health {
@@ -108,7 +111,6 @@ async fn main() {
     world.set(floor_s);
     world.set(wall_s);
     world.set(store);
-
 
     world
         .system_named::<(&mut WallSprite, &mut FloorSprite, &EguiContext)>("SpriteSelector")
@@ -242,6 +244,7 @@ async fn main() {
             world.remove::<EguiContext>();
         });
 
+        println!("{}", player.to_json(None));
         egui_macroquad::draw();
         next_frame().await
     }
@@ -308,5 +311,59 @@ mod test {
         for _ in 0..100000 {
             w.progress();
         }
+    }
+
+    #[derive(Component)]
+    #[meta]
+    struct Pos {
+        x: i32,
+        y: i32,
+    }
+    #[test]
+    fn serialization_test() {
+        let world = World::new();
+        world.component::<Pos>().meta();
+        let e = world.entity();
+        e.set(Pos { x: 5, y: 8 });
+        let s = e.to_json(None);
+        println!("{}", s);
+    }
+
+    #[derive(Debug, Component)]
+    #[meta]
+    pub struct Position {
+        pub x: f32,
+        pub y: f32,
+    }
+
+    #[test]
+    fn serialization_example() {
+        let mut world = World::new();
+
+        // Register the Position component with reflection data
+        world.component::<Position>().meta();
+
+        /* Alternatively, you can do it manually like so (without the derive macro)
+        .member::<f32>("x", 1 /* count */, core::mem::offset_of!(Position, x))
+        .member::<f32>("y", 1, core::mem::offset_of!(Position, y));
+        */
+
+        // Create a new entity with the Position component
+        let e = world.entity().set(Position { x: 2.0, y: 4.0 });
+
+        // Convert position component to JSON string
+        e.get::<&Position>(|p| {
+            let expr: String = world.to_json::<Position>(p);
+            println!("Position: {}", expr);
+        });
+
+        // Output:
+        //  Position: {x: 2, y: 4}
+
+        // Convert entity to JSON string
+        println!("Entity: {}", e.to_json(None));
+
+        // Output:
+        // Entity: {"name":"#547", "components":{"Position":{"x":2, "y":4}}}
     }
 }

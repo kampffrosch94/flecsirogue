@@ -58,8 +58,8 @@ pub struct SpriteModule {}
 
 impl Module for SpriteModule {
     fn module(w: &World) {
-	w.component::<DrawPos>().meta();
-	w.component::<Sprite>().meta();
+        w.component::<DrawPos>().meta();
+        w.component::<Sprite>().meta();
         w.system::<&Pos>()
             .without::<DrawPos>()
             .each_entity(|e, _pos| {
