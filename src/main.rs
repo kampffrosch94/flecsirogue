@@ -29,7 +29,16 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let w = World::new();
+    let world = World::new();
+
+    // Creates REST server on default port (27750)
+    world.import::<stats::Stats>(); // stats for explorer
+    world.set(flecs::rest::Rest::default());
+
+    world.import::<GameModule>();
+    world.import::<CameraModule>();
+    world.import::<SpriteModule>();
+    world.import::<TilemapModule>();
 
     // not sure how to move the TextureStore into a module since it uses async for loading
     // resources
@@ -46,7 +55,7 @@ async fn main() {
         .load_texture("assets/32rogues/monsters.png", "monsters")
         .await
         .unwrap();
-    let player = w
+    let player = world
         .entity_named("Player")
         .set(Unit {
             name: "Player".into(),
@@ -96,16 +105,13 @@ async fn main() {
         },
     };
 
-    w.set(floor_s);
-    w.set(wall_s);
-    w.set(store);
+    world.set(floor_s);
+    world.set(wall_s);
+    world.set(store);
 
-    w.import::<GameModule>();
-    w.import::<CameraModule>();
-    w.import::<SpriteModule>();
-    w.import::<TilemapModule>();
 
-    w.system_named::<(&mut WallSprite, &mut FloorSprite, &EguiContext)>("SpriteSelector")
+    world
+        .system_named::<(&mut WallSprite, &mut FloorSprite, &EguiContext)>("SpriteSelector")
         .term_at(0)
         .singleton()
         .term_at(1)
@@ -143,7 +149,7 @@ async fn main() {
         });
 
     let mut free_positions = Vec::new();
-    w.query::<&TileMap>().singleton().build().each(|tm| {
+    world.query::<&TileMap>().singleton().build().each(|tm| {
         for x in 0..tm.w {
             for y in 0..tm.h {
                 let pos = Pos::new(x, y);
@@ -160,7 +166,8 @@ async fn main() {
     player.set(free_positions.pop().unwrap());
     // place enemies
     for _ in 0..10 {
-        w.entity()
+        world
+            .entity()
             .set(Unit {
                 name: "Goblin".into(),
                 health: Health { max: 3, current: 3 },
@@ -168,57 +175,55 @@ async fn main() {
             .set(enemy_sprite.clone())
             .set(free_positions.pop().unwrap());
     }
+    // move player
+    world
+        .system_named::<(&TileMap, &mut MessageLog, &mut Pos)>("PlayerMovement")
+        .term_at(0)
+        .singleton()
+        .term_at(1)
+        .singleton()
+        .with::<Player>()
+        .each_entity(|e, (tm, ml, pos)| {
+            if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
+                let direction_keys = [
+                    (KeyCode::Kp1, (-1, 1)),
+                    (KeyCode::Kp2, (0, 1)),
+                    (KeyCode::Kp3, (1, 1)),
+                    (KeyCode::Kp4, (-1, 0)),
+                    (KeyCode::Kp5, (0, 0)),
+                    (KeyCode::Kp6, (1, 0)),
+                    (KeyCode::Kp7, (-1, -1)),
+                    (KeyCode::Kp8, (0, -1)),
+                    (KeyCode::Kp9, (1, -1)),
+                ];
+                let mut new_pos = *pos;
+                for (key, dir) in direction_keys {
+                    if is_key_pressed(key) {
+                        new_pos += dir;
+                    }
+                }
+
+                if new_pos != *pos {
+                    // check that we do not hit ourselves
+                    let is_floor = tm.terrain[new_pos] == TileKind::Floor;
+                    let maybe_blocker = tm.units.get(&new_pos);
+                    let not_blocked = maybe_blocker.is_none();
+                    if is_floor && not_blocked {
+                        *pos = new_pos;
+                    }
+                    if let Some(other_entity) = maybe_blocker {
+                        let other = other_entity.entity_view(e);
+                        other.get::<&mut Unit>(|unit| {
+                            unit.health.current -= 2;
+                            ml.messages.push(format!("You hit the {}.", unit.name));
+                        });
+                    }
+                }
+            }
+        });
 
     loop {
         clear_background(BLACK);
-
-        // move player
-        w.query::<(&TileMap, &mut MessageLog)>()
-            .term_at(0)
-            .singleton()
-            .term_at(1)
-            .singleton()
-            .build()
-            .each(|(tm, ml)| {
-                player.get::<&mut Pos>(|pos| {
-                    if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
-                        let direction_keys = [
-                            (KeyCode::Kp1, (-1, 1)),
-                            (KeyCode::Kp2, (0, 1)),
-                            (KeyCode::Kp3, (1, 1)),
-                            (KeyCode::Kp4, (-1, 0)),
-                            (KeyCode::Kp5, (0, 0)),
-                            (KeyCode::Kp6, (1, 0)),
-                            (KeyCode::Kp7, (-1, -1)),
-                            (KeyCode::Kp8, (0, -1)),
-                            (KeyCode::Kp9, (1, -1)),
-                        ];
-                        let mut new_pos = *pos;
-                        for (key, dir) in direction_keys {
-                            if is_key_pressed(key) {
-                                new_pos += dir;
-                            }
-                        }
-
-                        if new_pos != *pos {
-                            // check that we do not hit ourselves
-                            let is_floor = tm.terrain[new_pos] == TileKind::Floor;
-                            let maybe_blocker = tm.units.get(&new_pos);
-                            let not_blocked = maybe_blocker.is_none();
-                            if is_floor && not_blocked {
-                                *pos = new_pos;
-                            }
-                            if let Some(other_entity) = maybe_blocker {
-                                let other = other_entity.entity_view(&w);
-                                other.get::<&mut Unit>(|unit| {
-                                    unit.health.current -= 2;
-                                    ml.messages.push(format!("You hit the {}.", unit.name));
-                                });
-                            }
-                        }
-                    }
-                });
-            });
 
         // unfortunately we can not call this method twice without completely refactoring
         // egui macroquad, so we wrap it around w.progress()
@@ -229,12 +234,12 @@ async fn main() {
                 // do not forgot to remove it before the egui context goes out of scope
                 ctx: unsafe { std::mem::transmute(egui_ctx) },
             };
-            w.set(wrapper);
-            w.progress();
+            world.set(wrapper);
+            world.progress();
             egui::Window::new("egui ❤ macroquad").show(egui_ctx, |ui| {
                 ui.label("Test");
             });
-            w.remove::<EguiContext>();
+            world.remove::<EguiContext>();
         });
 
         egui_macroquad::draw();
@@ -273,7 +278,7 @@ mod test {
     fn cursed_inheritance() {
         #[derive(Component, Debug)]
         struct Unit {
-	    name: String,
+            name: String,
             health: i32,
         }
         #[derive(Component)]
@@ -281,18 +286,27 @@ mod test {
         let w = World::new();
         w.component::<Player>().is_a::<Unit>();
 
-        let _goblin = w.entity().set(Unit { health: 3, name: "Goblin".into() });
+        let _goblin = w.entity().set(Unit {
+            health: 3,
+            name: "Goblin".into(),
+        });
         let _player = w.entity().add::<Player>();
-        let _goblin = w.entity().set(Unit { health: 0, name: "Goblin".into() });
-        let _goblin = w.entity().set(Unit { health: 3, name: "Goblin".into() });
-	w.system::<&mut Unit>().each_entity(|entity, unit|{
-	    if unit.health <= 0 {
-		println!("Destroying {:?}", entity);
-		entity.destruct();
-	    }
-	});
-	for _ in 0..100000 {
-	    w.progress();
-	}
+        let _goblin = w.entity().set(Unit {
+            health: 0,
+            name: "Goblin".into(),
+        });
+        let _goblin = w.entity().set(Unit {
+            health: 3,
+            name: "Goblin".into(),
+        });
+        w.system::<&mut Unit>().each_entity(|entity, unit| {
+            if unit.health <= 0 {
+                println!("Destroying {:?}", entity);
+                entity.destruct();
+            }
+        });
+        for _ in 0..100000 {
+            w.progress();
+        }
     }
 }
