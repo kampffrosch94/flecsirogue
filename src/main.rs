@@ -209,7 +209,7 @@ async fn main() {
                                 *pos = new_pos;
                             }
                             if let Some(other_entity) = maybe_blocker {
-                                let other = other_entity.id_view(&w).get_entity_view().unwrap();
+                                let other = other_entity.entity_view(&w);
                                 other.get::<&mut Unit>(|unit| {
                                     unit.health.current -= 2;
                                     ml.messages.push(format!("You hit the {}.", unit.name));
@@ -263,4 +263,36 @@ fn goblin_test() {
     e.get::<&MaxHealth>(|mh| assert_eq!(4, mh.0));
     goblin.get::<&mut MaxHealth>(|mh| mh.0 = 5);
     e.get::<&MaxHealth>(|mh| assert_eq!(5, mh.0));
+}
+
+mod test {
+
+    use flecs_ecs::prelude::*;
+    #[test]
+    #[cfg(test)]
+    fn cursed_inheritance() {
+        #[derive(Component, Debug)]
+        struct Unit {
+	    name: String,
+            health: i32,
+        }
+        #[derive(Component)]
+        struct Player {}
+        let w = World::new();
+        w.component::<Player>().is_a::<Unit>();
+
+        let _goblin = w.entity().set(Unit { health: 3, name: "Goblin".into() });
+        let _player = w.entity().add::<Player>();
+        let _goblin = w.entity().set(Unit { health: 0, name: "Goblin".into() });
+        let _goblin = w.entity().set(Unit { health: 3, name: "Goblin".into() });
+	w.system::<&mut Unit>().each_entity(|entity, unit|{
+	    if unit.health <= 0 {
+		println!("Destroying {:?}", entity);
+		entity.destruct();
+	    }
+	});
+	for _ in 0..100000 {
+	    w.progress();
+	}
+    }
 }
