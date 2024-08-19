@@ -32,11 +32,11 @@ async fn main() {
     let world = World::new();
 
     world.component::<Pos>().meta();
-    world.component::<DrawPos>().meta();
+    world.component::<Sprite>();
 
+    world.import::<SpriteModule>();
     world.import::<GameModule>();
     world.import::<CameraModule>();
-    world.import::<SpriteModule>();
     world.import::<TilemapModule>();
 
     // Creates REST server on default port (27750)
@@ -169,7 +169,7 @@ async fn main() {
     // place enemies
     for _ in 0..10 {
         world
-            .entity()
+            .entity_named("Goblin")
             .set(Unit {
                 name: "Goblin".into(),
                 health: Health { max: 3, current: 3 },
@@ -238,13 +238,10 @@ async fn main() {
             };
             world.set(wrapper);
             world.progress();
-            egui::Window::new("egui ❤ macroquad").show(egui_ctx, |ui| {
-                ui.label("Test");
-            });
             world.remove::<EguiContext>();
         });
 
-        println!("{}", player.to_json(None));
+        // println!("{}", player.to_json(None));
         egui_macroquad::draw();
         next_frame().await
     }
@@ -274,44 +271,7 @@ fn goblin_test() {
 }
 
 mod test {
-
     use flecs_ecs::prelude::*;
-    #[test]
-    #[cfg(test)]
-    fn cursed_inheritance() {
-        #[derive(Component, Debug)]
-        struct Unit {
-            name: String,
-            health: i32,
-        }
-        #[derive(Component)]
-        struct Player {}
-        let w = World::new();
-        w.component::<Player>().is_a::<Unit>();
-
-        let _goblin = w.entity().set(Unit {
-            health: 3,
-            name: "Goblin".into(),
-        });
-        let _player = w.entity().add::<Player>();
-        let _goblin = w.entity().set(Unit {
-            health: 0,
-            name: "Goblin".into(),
-        });
-        let _goblin = w.entity().set(Unit {
-            health: 3,
-            name: "Goblin".into(),
-        });
-        w.system::<&mut Unit>().each_entity(|entity, unit| {
-            if unit.health <= 0 {
-                println!("Destroying {:?}", entity);
-                entity.destruct();
-            }
-        });
-        for _ in 0..100000 {
-            w.progress();
-        }
-    }
 
     #[derive(Component)]
     #[meta]
@@ -336,34 +296,4 @@ mod test {
         pub y: f32,
     }
 
-    #[test]
-    fn serialization_example() {
-        let mut world = World::new();
-
-        // Register the Position component with reflection data
-        world.component::<Position>().meta();
-
-        /* Alternatively, you can do it manually like so (without the derive macro)
-        .member::<f32>("x", 1 /* count */, core::mem::offset_of!(Position, x))
-        .member::<f32>("y", 1, core::mem::offset_of!(Position, y));
-        */
-
-        // Create a new entity with the Position component
-        let e = world.entity().set(Position { x: 2.0, y: 4.0 });
-
-        // Convert position component to JSON string
-        e.get::<&Position>(|p| {
-            let expr: String = world.to_json::<Position>(p);
-            println!("Position: {}", expr);
-        });
-
-        // Output:
-        //  Position: {x: 2, y: 4}
-
-        // Convert entity to JSON string
-        println!("Entity: {}", e.to_json(None));
-
-        // Output:
-        // Entity: {"name":"#547", "components":{"Position":{"x":2, "y":4}}}
-    }
 }

@@ -47,8 +47,8 @@ pub struct DrawPos {
 }
 
 #[derive(Component, Debug, Clone)]
-#[meta]
 pub struct Sprite {
+    #[skip]
     pub texture: Texture2D,
     pub params: DrawTextureParams,
 }
@@ -59,7 +59,8 @@ pub struct SpriteModule {}
 impl Module for SpriteModule {
     fn module(w: &World) {
         w.component::<DrawPos>().meta();
-        w.component::<Sprite>().meta();
+        w.component::<Sprite>();
+
         w.system::<&Pos>()
             .without::<DrawPos>()
             .each_entity(|e, _pos| {
