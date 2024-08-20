@@ -169,7 +169,7 @@ async fn main() {
     // place enemies
     for _ in 0..10 {
         world
-            .entity_named("Goblin")
+            .entity()
             .set(Unit {
                 name: "Goblin".into(),
                 health: Health { max: 3, current: 3 },
@@ -252,24 +252,6 @@ pub struct EguiContext {
     pub ctx: &'static egui::Context,
 }
 
-#[test]
-#[cfg(test)]
-fn goblin_test() {
-    #[derive(Component, Debug)]
-    struct MaxHealth(i32);
-
-    let w = World::new();
-    w.component::<MaxHealth>()
-        .add_trait::<(flecs::OnInstantiate, flecs::Inherit)>();
-
-    let goblin = w.prefab().set(MaxHealth(4));
-    let e = w.entity().is_a_id(goblin);
-
-    e.get::<&MaxHealth>(|mh| assert_eq!(4, mh.0));
-    goblin.get::<&mut MaxHealth>(|mh| mh.0 = 5);
-    e.get::<&MaxHealth>(|mh| assert_eq!(5, mh.0));
-}
-
 mod test {
     use flecs_ecs::prelude::*;
 
@@ -296,4 +278,48 @@ mod test {
         pub y: f32,
     }
 
+    #[test]
+    fn goblin_test() {
+        #[derive(Component, Debug)]
+        struct MaxHealth(i32);
+
+        let w = World::new();
+        w.component::<MaxHealth>()
+            .add_trait::<(flecs::OnInstantiate, flecs::Inherit)>();
+
+        let goblin = w.prefab().set(MaxHealth(4));
+        let e = w.entity().is_a_id(goblin);
+
+        e.get::<&MaxHealth>(|mh| assert_eq!(4, mh.0));
+        goblin.get::<&mut MaxHealth>(|mh| mh.0 = 5);
+        e.get::<&MaxHealth>(|mh| assert_eq!(5, mh.0));
+    }
+
+    #[test]
+    fn serde_relationship() {
+        #[derive(Component)]
+        #[meta]
+        pub struct Eats;
+        let world = World::new();
+
+        // Entity used for Grows relationship
+        let grows = world.entity_named("Grows");
+
+        // Relationship objects
+        let apples = world.entity_named("Apples");
+        let pears = world.entity_named("Pears");
+
+        // Create an entity with 3 relationships. Relationships are like regular components,
+        // but combine two types/identifiers into an (relationship, object) pair.
+        world
+            .entity_named("Bob")
+            // Pairs can be constructed from a type and entity
+            .add_first::<Eats>(apples)
+            .add_first::<Eats>(pears)
+            // Pairs can also be constructed from two entity ids
+            .add_id((grows, pears));
+
+        let json = world.to_json_world(None);
+        println!("{}", json);
+    }
 }
