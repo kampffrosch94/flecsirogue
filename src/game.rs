@@ -1,17 +1,19 @@
 use flecs_ecs::prelude::*;
 
-use crate::EguiContext;
+use crate::{util::pos::Pos, EguiContext};
 
 #[derive(Component, Debug)]
 pub struct Player;
 
 #[derive(Component, Debug)]
+#[meta]
 pub struct Unit {
     pub name: String,
     pub health: Health,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Component)]
+#[meta]
 pub struct Health {
     pub max: i32,
     pub current: i32,
@@ -23,9 +25,21 @@ pub struct MessageLog {
 }
 
 #[derive(Component)]
-pub struct GameModule {}
+pub struct GameComponents {}
 
-impl Module for GameModule {
+impl Module for GameComponents {
+    fn module(world: &World) {
+	world.component::<Pos>().meta();
+	world.component::<Player>();
+	world.component::<Health>().meta();
+	world.component::<Unit>().meta();
+    }
+}
+
+#[derive(Component)]
+pub struct GameSystems {}
+
+impl Module for GameSystems {
     fn module(world: &World) {
         world.set(MessageLog::default());
         world

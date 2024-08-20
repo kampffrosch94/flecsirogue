@@ -106,11 +106,22 @@ impl CameraWrapper {
     }
 }
 
-#[derive(Component)]
-pub struct CameraModule {}
 
-impl Module for CameraModule {
-    fn module(world: &flecs_ecs::prelude::World) {
+#[derive(Component)]
+pub struct CameraComponents {}
+
+impl Module for CameraComponents {
+    fn module(world: &World) {
+	world.component::<CameraWrapper>();
+    }
+}
+
+
+#[derive(Component)]
+pub struct CameraSystems {}
+
+impl Module for CameraSystems {
+    fn module(world: &World) {
         world.set(CameraWrapper::new());
         let mut last_mouse_position = mouse_position();
         world

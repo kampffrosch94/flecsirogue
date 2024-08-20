@@ -6,13 +6,13 @@ mod util;
 mod vendored;
 
 use egui::Slider;
-use game::{GameModule, Health, MessageLog, Player, Unit};
+use game::*;
 use sprite::*;
 use tilemap::*;
 use util::pos::Pos;
 use vendored::*;
 
-use camera::CameraModule;
+use camera::CameraSystems;
 
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
@@ -31,12 +31,12 @@ fn window_conf() -> Conf {
 async fn main() {
     let world = World::new();
 
-    world.component::<Pos>().meta();
-    world.component::<Sprite>();
+    world.import::<SpriteComponents>();
+    world.import::<GameComponents>();
 
-    world.import::<SpriteModule>();
-    world.import::<GameModule>();
-    world.import::<CameraModule>();
+    world.import::<SpriteSystems>();
+    world.import::<GameSystems>();
+    world.import::<CameraSystems>();
     world.import::<TilemapModule>();
 
     // Creates REST server on default port (27750)

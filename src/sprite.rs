@@ -54,9 +54,19 @@ pub struct Sprite {
 }
 
 #[derive(Component)]
-pub struct SpriteModule {}
+pub struct SpriteComponents {}
 
-impl Module for SpriteModule {
+impl Module for SpriteComponents {
+    fn module(w: &World) {
+        w.component::<DrawPos>().meta();
+        w.component::<Sprite>();
+    }
+}
+
+#[derive(Component)]
+pub struct SpriteSystems {}
+
+impl Module for SpriteSystems {
     fn module(w: &World) {
         w.component::<DrawPos>().meta();
         w.component::<Sprite>();
