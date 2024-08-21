@@ -7,7 +7,7 @@ edition = "2021"
 anyhow = "1.0.86"
 derive_more = "0.99.18"
 #flecs_ecs = { git = "https://github.com/Indra-db/Flecs-Rust.git", branch = "meta-V2"}
-flecs_ecs = { git = "https://github.com/Indra-db/Flecs-Rust.git"}
+flecs_ecs = { git = "https://github.com/Indra-db/Flecs-Rust.git", features = ["flecs_manual_registration"]}
 macroquad = "0.4.11"
 mapgen = "0.6.0"
 tween = "2.0.3"

@@ -1,18 +1,19 @@
 mod camera;
 mod game;
+mod input;
 mod sprite;
 mod tilemap;
 mod util;
 mod vendored;
 
-use egui::Slider;
 use game::*;
+use input::InputSystems;
 use sprite::*;
 use tilemap::*;
 use util::pos::Pos;
 use vendored::*;
 
-use camera::CameraSystems;
+use camera::{CameraComponents, CameraSystems};
 
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
@@ -27,22 +28,8 @@ fn window_conf() -> Conf {
     }
 }
 
-#[macroquad::main(window_conf)]
-async fn main() {
-    let world = World::new();
-
-    world.import::<SpriteComponents>();
-    world.import::<GameComponents>();
-
-    world.import::<SpriteSystems>();
-    world.import::<GameSystems>();
-    world.import::<CameraSystems>();
-    world.import::<TilemapModule>();
-
-    // Creates REST server on default port (27750)
-    world.import::<stats::Stats>(); // stats for explorer
-    world.set(flecs::rest::Rest::default());
-
+// we use this again on loading saves
+async fn create_world() -> World {
     // not sure how to move the TextureStore into a module since it uses async for loading
     // resources
     let mut store = TextureStore::default();
@@ -58,31 +45,18 @@ async fn main() {
         .load_texture("assets/32rogues/monsters.png", "monsters")
         .await
         .unwrap();
-    let player = world
-        .entity_named("PlayerCharacter")
-        .set(Unit {
-            name: "Player".into(),
-            health: Health {
-                max: 10,
-                current: 10,
-            },
-        })
-        .add::<Player>()
-        .set(Sprite {
-            texture: store.get("rogues"),
-            params: DrawTextureParams {
-                source: Some(Rect::new(0., 0., 32., 32.)),
-                ..Default::default()
-            },
-        });
 
-    let enemy_sprite = Sprite {
-        texture: store.get("monsters"),
-        params: DrawTextureParams {
-            source: Some(Rect::new(0., 0., 32., 32.)),
-            ..Default::default()
-        },
-    };
+    let world = World::new();
+    world.import::<SpriteComponents>();
+    world.import::<GameComponents>();
+    world.import::<CameraComponents>();
+    world.import::<TilemapComponents>();
+
+    world.import::<SpriteSystems>();
+    world.import::<GameSystems>();
+    world.import::<CameraSystems>();
+    world.import::<InputSystems>();
+    world.import::<TilemapSystems>();
 
     let floor_s = FloorSprite {
         texture: store.get("tiles"),
@@ -112,43 +86,27 @@ async fn main() {
     world.set(wall_s);
     world.set(store);
 
-    world
-        .system_named::<(&mut WallSprite, &mut FloorSprite, &EguiContext)>("SpriteSelector")
-        .term_at(0)
-        .singleton()
-        .term_at(1)
-        .singleton()
-        .each(|(wall_s, floor_s, egui)| {
-            egui::Window::new("Sprite selector").show(egui.ctx, |ui| {
-                if let Some(ref mut rect) = wall_s.lower.params.source {
-                    ui.label("wall sprite:");
-                    ui.add(
-                        Slider::new(&mut rect.x, 0.0..=640.0)
-                            .text("x")
-                            .step_by(32.0),
-                    );
-                    ui.add(
-                        Slider::new(&mut rect.y, 0.0..=640.0)
-                            .text("y")
-                            .step_by(32.0),
-                    );
-                }
+    // Creates REST server on default port (27750)
+    // world.import::<stats::Stats>(); // stats for explorer
+    // world.set(flecs::rest::Rest::default());
 
-                if let Some(ref mut rect) = floor_s.params.source {
-                    ui.label("floor sprite:");
-                    ui.add(
-                        Slider::new(&mut rect.x, 0.0..=640.0)
-                            .text("x")
-                            .step_by(32.0),
-                    );
-                    ui.add(
-                        Slider::new(&mut rect.y, 0.0..=640.0)
-                            .text("y")
-                            .step_by(32.0),
-                    );
-                }
-            });
-        });
+    return world;
+}
+
+#[macroquad::main(window_conf)]
+async fn main() {
+    let mut world = create_world().await;
+
+    let player = world
+        .entity_named("PlayerCharacter")
+        .set(Unit {
+            name: "Player".into(),
+            health: Health {
+                max: 10,
+                current: 10,
+            },
+        })
+        .add::<Player>();
 
     let mut free_positions = Vec::new();
     world.query::<&TileMap>().singleton().build().each(|tm| {
@@ -174,58 +132,33 @@ async fn main() {
                 name: "Goblin".into(),
                 health: Health { max: 3, current: 3 },
             })
-            .set(enemy_sprite.clone())
             .set(free_positions.pop().unwrap());
     }
-    // move player
-    world
-        .system_named::<(&TileMap, &mut MessageLog, &mut Pos)>("PlayerMovement")
-        .term_at(0)
-        .singleton()
-        .term_at(1)
-        .singleton()
-        .with::<Player>()
-        .each_entity(|e, (tm, ml, pos)| {
-            if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
-                let direction_keys = [
-                    (KeyCode::Kp1, (-1, 1)),
-                    (KeyCode::Kp2, (0, 1)),
-                    (KeyCode::Kp3, (1, 1)),
-                    (KeyCode::Kp4, (-1, 0)),
-                    (KeyCode::Kp5, (0, 0)),
-                    (KeyCode::Kp6, (1, 0)),
-                    (KeyCode::Kp7, (-1, -1)),
-                    (KeyCode::Kp8, (0, -1)),
-                    (KeyCode::Kp9, (1, -1)),
-                ];
-                let mut new_pos = *pos;
-                for (key, dir) in direction_keys {
-                    if is_key_pressed(key) {
-                        new_pos += dir;
-                    }
-                }
 
-                if new_pos != *pos {
-                    // check that we do not hit ourselves
-                    let is_floor = tm.terrain[new_pos] == TileKind::Floor;
-                    let maybe_blocker = tm.units.get(&new_pos);
-                    let not_blocked = maybe_blocker.is_none();
-                    if is_floor && not_blocked {
-                        *pos = new_pos;
-                    }
-                    if let Some(other_entity) = maybe_blocker {
-                        let other = other_entity.entity_view(e);
-                        other.get::<&mut Unit>(|unit| {
-                            unit.health.current -= 2;
-                            ml.messages.push(format!("You hit the {}.", unit.name));
-                        });
-                    }
-                }
-            }
-        });
+    let mut backup = None;
 
     loop {
         clear_background(BLACK);
+
+        if is_key_pressed(KeyCode::F5) {
+            let s = world.to_json_world(None);
+            println!("{}", s);
+            backup = Some(s);
+        }
+        if is_key_pressed(KeyCode::F9) {
+            if let Some(ref json) = backup {
+                let new_world = create_world().await;
+                new_world.from_json_world(json, None);
+                world = new_world;
+                // BUG: sprites are serialized as null, even though they shouldn't be
+                // possibly a flecs bug
+                world.defer_begin();
+                world.query::<&mut Sprite>().build().each_entity(|e, _| {
+                    e.remove::<Sprite>();
+                });
+                world.defer_end();
+            }
+        }
 
         // unfortunately we can not call this method twice without completely refactoring
         // egui macroquad, so we wrap it around w.progress()
@@ -254,6 +187,7 @@ pub struct EguiContext {
 
 mod test {
     use flecs_ecs::prelude::*;
+    use json::{FromJsonDesc, WorldToJsonDesc};
 
     #[derive(Component)]
     #[meta]
@@ -319,6 +253,47 @@ mod test {
             // Pairs can also be constructed from two entity ids
             .add_id((grows, pears));
 
+        let json = world.to_json_world(None);
+        println!("{}", json);
+    }
+
+    #[test]
+    fn world_serialisation_no_meta() {
+        #[derive(Component)]
+        pub struct Thing {
+            stuff: u32,
+        }
+        let world = World::new();
+        world.component::<Thing>();
+
+        let e = world.entity().set(Thing { stuff: 32 });
+        let desc = json::EntityToJsonDesc {
+            serialize_entity_id: true,
+            serialize_doc: false,
+            serialize_full_paths: false,
+            serialize_inherited: false,
+            serialize_values: true,
+            serialize_builtin: false,
+            serialize_type_info: false,
+            serialize_alerts: false,
+            serialize_refs: 0,
+            serialize_matches: false,
+        };
+        let s = e.to_json(Some(&desc));
+        println!("{}", s);
+
+        let json = world.to_json_world(None);
+
+        let world = World::new();
+        world.component::<Thing>();
+        let desc: FromJsonDesc = FromJsonDesc {
+            name: c"Test".as_ptr(),
+            expr: c"Test".as_ptr(),
+            lookup_action: None,
+            lookup_ctx: unsafe { std::mem::transmute(std::ptr::null::<std::ffi::c_void>()) },
+            strict: true,
+        };
+        world.from_json_world(&json, Some(&desc));
         let json = world.to_json_world(None);
         println!("{}", json);
     }

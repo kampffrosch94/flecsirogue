@@ -95,10 +95,21 @@ pub struct FloorSprite {
 pub struct Visible {}
 
 #[derive(Component)]
-pub struct TilemapModule {}
+pub struct TilemapComponents {}
 
-impl Module for TilemapModule {
+impl Module for TilemapComponents {
     fn module(world: &flecs_ecs::prelude::World) {
+        world.component::<Visible>();
+        world.component::<TileMap>();
+    }
+}
+
+#[derive(Component)]
+pub struct TilemapSystems {}
+
+impl Module for TilemapSystems {
+    fn module(world: &flecs_ecs::prelude::World) {
+        // TODO move to init function
         world.set(TileMap::new());
 
         world

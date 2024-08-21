@@ -29,10 +29,12 @@ pub struct GameComponents {}
 
 impl Module for GameComponents {
     fn module(world: &World) {
-	world.component::<Pos>().meta();
-	world.component::<Player>();
-	world.component::<Health>().meta();
-	world.component::<Unit>().meta();
+        world.component::<Pos>().meta();
+        world.component::<Player>();
+        world.component::<Health>().meta();
+        world.component::<Unit>().meta();
+        world.component::<MessageLog>();
+        world.component::<EguiContext>();
     }
 }
 

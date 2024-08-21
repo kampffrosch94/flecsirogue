@@ -106,16 +106,14 @@ impl CameraWrapper {
     }
 }
 
-
 #[derive(Component)]
 pub struct CameraComponents {}
 
 impl Module for CameraComponents {
     fn module(world: &World) {
-	world.component::<CameraWrapper>();
+        world.component::<CameraWrapper>();
     }
 }
-
 
 #[derive(Component)]
 pub struct CameraSystems {}
