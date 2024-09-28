@@ -1,8 +1,9 @@
 use flecs_ecs::prelude::*;
 
-use crate::{util::pos::Pos, EguiContext};
+use crate::{util::pos::Pos, EguiContext, Persist};
 
 #[derive(Component, Debug)]
+#[meta]
 pub struct Player;
 
 #[derive(Component, Debug)]
@@ -29,10 +30,11 @@ pub struct GameComponents {}
 
 impl Module for GameComponents {
     fn module(world: &World) {
-        world.component::<Pos>().meta();
-        world.component::<Player>();
-        world.component::<Health>().meta();
-        world.component::<Unit>().meta();
+        world.module::<GameComponents>("GameComponents");
+        world.component::<Pos>().meta().add::<Persist>();
+        world.component::<Player>().meta().add::<Persist>();
+        world.component::<Health>().meta().add::<Persist>();
+        world.component::<Unit>().meta().add::<Persist>();
         world.component::<MessageLog>();
         world.component::<EguiContext>();
     }
