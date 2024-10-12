@@ -261,6 +261,7 @@ mod test {
         #[meta]
         pub struct Eats;
         let world = World::new();
+	world.component::<Eats>();
 
         // Entity used for Grows relationship
         let grows = world.entity_named("Grows");
