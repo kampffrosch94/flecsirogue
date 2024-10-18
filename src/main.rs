@@ -261,7 +261,7 @@ mod test {
         #[meta]
         pub struct Eats;
         let world = World::new();
-	world.component::<Eats>();
+        world.component::<Eats>();
 
         // Entity used for Grows relationship
         let grows = world.entity_named("Grows");
@@ -285,17 +285,29 @@ mod test {
     }
 
     #[test]
-    fn world_serialisation_no_meta() {
+    #[should_panic] // test will fail once things changed
+    fn world_serialisation_no_meta_more() {
+        #[derive(Debug)]
+        struct NoDefaultHere {
+            x: f32,
+        }
+
         #[derive(Component, Debug)]
         pub struct Thing {
+            s: String,
             stuff: u32,
+            b: NoDefaultHere,
         }
         let world = World::new();
         world.component::<Thing>();
 
-        let e = world.entity().set(Thing { stuff: 32 });
+        let e = world.entity().set(Thing {
+            s: "test".into(),
+            stuff: 32,
+            b: NoDefaultHere { x: 4.2 },
+        });
         let s = e.to_json(None);
-        println!("{}", s);
+        println!("Output: {}", s);
         let json = world.to_json_world(None);
 
         let world2 = World::new();
@@ -305,15 +317,17 @@ mod test {
             expr: c"Test".as_ptr(),
             lookup_action: None,
             lookup_ctx: unsafe { std::mem::transmute(std::ptr::null::<std::ffi::c_void>()) },
-            strict: false,
+            strict: true,
         };
         world2.from_json_world(&json, Some(&desc));
         world2.new_query::<&Thing>().iterable().each(|thing| {
             dbg!(thing);
+            assert!(false);
         });
     }
 
     #[test]
+    #[should_panic] // test will fail once things changed
     fn world_serialisation_no_meta_minimal() {
         // notice how we are NOT adding #[meta] to this
         #[derive(Component, Debug)]
@@ -325,16 +339,45 @@ mod test {
         world.entity().set(Thing { stuff: 32 });
         let json = world.to_json_world(None);
         println!("{}", json);
-	// Output:
-	// {"results":[{"name":"#558", "id":558,
-	// "components":{"flecsirogue.test.world_serialisation_no_meta_minimal.Thing":null}}]}
+        // Output:
+        // {"results":[{"name":"#558", "id":558,
+        // "components":{"flecsirogue.test.world_serialisation_no_meta_minimal.Thing":null}}]}
 
         let world2 = World::new();
         world2.component::<Thing>();
         world2.from_json_world(&json, None);
         world2.new_query::<&Thing>().iterable().each(|thing| {
-            dbg!(thing); // prints some bogus data
+            dbg!(thing); // used to print bogus in the past, now nulled
             assert!(false); // fails
         });
+    }
+
+    #[test]
+    #[should_panic] // test will fail once things changed
+    fn world_serialisation_no_meta_drop() {
+        // notice how we are NOT adding #[meta] to this
+        #[derive(Component, Debug)]
+        pub struct Thing {
+            stuff: u32,
+        }
+        impl Drop for Thing {
+            fn drop(&mut self) {
+		if self.stuff != 32 {
+                    panic!("I can't be dropped right now");
+		}
+            }
+        }
+        let world = World::new();
+        world.component::<Thing>();
+        world.entity_named("thing").set(Thing { stuff: 32 });
+        let json = world.to_json_world(None);
+        println!("{}", json);
+
+        let world2 = World::new();
+        world2.component::<Thing>();
+        world2.from_json_world(&json, None);
+	// fails, cause Thing is dropped without having the correct value
+	world.entity_named("thing").destruct(); 
+	println!("Done.");
     }
 }
