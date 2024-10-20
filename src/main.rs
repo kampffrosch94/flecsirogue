@@ -158,10 +158,6 @@ async fn main() {
                 println!("Created world.");
                 let ds = Vec::deserialize_json(json).unwrap();
                 println!("DeJsoned.");
-                {
-                    let mut stdout = std::io::stdout();
-                    std::io::Write::flush(&mut stdout);
-                }
                 persist::deserialize_world(&new_world, &ds);
                 println!("World deserialized.");
                 world = new_world;
@@ -198,6 +194,8 @@ mod test {
     #![allow(unused)]
     use flecs_ecs::prelude::*;
     use json::{FromJsonDesc, WorldToJsonDesc};
+
+    use crate::persist::Persist;
 
     #[derive(Component)]
     #[meta]

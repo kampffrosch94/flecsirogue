@@ -5,6 +5,26 @@ use flecs_ecs::{prelude::*, sys};
 use nanoserde::{DeJson, SerJson};
 
 #[derive(Component)]
+pub struct Persister {
+    pub serializer: Box<fn(EntityView) -> String>,
+    pub deserializer: Box<fn(EntityView, &str)>,
+}
+
+impl Persister {
+    fn new<T>() -> Self
+    where T: ComponentId + DataComponent + DeJson + SerJson,
+    {
+	let ser = |ev: EntityView| ev.get::<&T>(|t| t.serialize_json());
+	let deser = |ev: EntityView, s: &str| {ev.set(T::deserialize_json(s).unwrap());};
+        Self {
+            serializer: Box::new(ser),
+            deserializer: Box::new(deser),
+        }
+    }
+}
+
+
+#[derive(Component)]
 pub struct Persist {}
 
 pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
@@ -33,7 +53,9 @@ pub fn deserialize_world(world: &World, ses: &Vec<SerializedEntity>) {
 
 fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<'a> {
     let e = world.make_alive(s.id);
-    e.set_name(&s.name);
+    if !s.name.is_empty() {
+        e.set_name(&s.name);
+    }
 
     println!("Looking up tags");
     for tag in &s.tags {
@@ -43,11 +65,15 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
 
     println!("Looking up components");
     for comp in &s.components {
-        let comp_e = world.lookup(&comp.name);
+        dbg!(comp);
+        let comp_e = world.try_lookup(&comp.name).unwrap();
         println!("Name: {}", comp_e.name());
         unsafe { sys::ecs_emplace_id(world.world_ptr_mut(), *e.id(), *comp_e.id(), null_mut()) };
+        println!("Emplaced");
         let data_location = e.get_untyped_mut(comp_e);
+        println!("Got untyped");
         world.from_json_id(comp_e, data_location, &comp.value, None);
+        println!("DeJsoned");
     }
 
     for (rel, target, kind) in &s.pairs {
@@ -83,37 +109,33 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
     e.each_component(|comp| {
         if comp.is_entity() {
             let ev = comp.entity_view();
-            let name = ev.symbol();
-            println!("comp: {}", name);
+            let name = ev.path().unwrap();
+            //println!("comp: {}", name);
             if ev.has::<Persist>() {
-                println!("[{:?}]", ev.archetype());
+                //println!("[{:?}]", ev.archetype());
                 if ev.has::<TypeSerializer>() {
                     let json = world.to_json_id(comp, e.get_untyped(comp));
-                    println!("json: {}", json);
+                    //println!("json: {}", json);
                     components.push((name, json).into());
                 } else {
-                    tags.push(ev.symbol());
+                    tags.push(ev.path().unwrap());
                 }
             }
         } else if comp.is_pair() {
-            println!(
-                "Pair {} + {}",
-                comp.first_id().name(),
-                comp.second_id().name()
-            );
+            //println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
             let ev1 = comp.first_id();
             let ev2 = comp.second_id();
             if ev1.has::<Persist>() {
-                println!("Lets persist.");
+                // println!("Lets persist.");
                 if ev2.has::<flecs_ecs::core::flecs::Component>() {
                     let pointer = e.get_untyped(comp);
                     let json = world.to_json_id(ev2, pointer);
                     let s = SerializedTarget::Component(json);
-                    pairs.push((ev1.symbol(), ev2.symbol(), s));
+                    pairs.push((ev1.path().unwrap(), ev2.path().unwrap(), s));
                     //println!("[{:?}]", ev2.archetype());
                 } else {
                     let s = SerializedTarget::Entity(*ev2.id());
-                    pairs.push((ev1.symbol(), ev2.name(), s));
+                    pairs.push((ev1.path().unwrap(), ev2.name(), s));
                 }
             }
         } else {
@@ -164,6 +186,8 @@ pub struct SerializedEntity {
 
 mod test {
     #![allow(unused)]
+    use crate::{Health, Unit};
+
     use super::*;
     use flecs_ecs::prelude::*;
 
@@ -201,6 +225,8 @@ mod test {
         world.component::<Transparent>().meta().add::<Persist>();
         world.component::<SomeTag>().meta().add::<Persist>();
         world.component::<SomeRel>().meta().add::<Persist>();
+        world.component::<Health>().meta().add::<Persist>();
+        world.component::<Unit>().meta().add::<Persist>();
         return world;
     }
 
@@ -272,5 +298,35 @@ mod test {
         deserialize_world(&world2, &ds);
         dbg!(serialize_world(&world2));
         println!("{s}");
+    }
+
+    #[test]
+    fn serialize_world_nested_test() {
+        let world = create_test_world();
+        let e = world.entity().set(Unit {
+            name: "VillagerA".into(),
+            health: Health { max: 5, current: 3 },
+        });
+        println!("{}", e.to_json(None));
+
+        let s = serialize_world(&world).serialize_json();
+        let ds = Vec::deserialize_json(&s).unwrap();
+        let world2 = create_test_world();
+        deserialize_world(&world2, &ds);
+        dbg!(serialize_world(&world2));
+        println!("{s}");
+    }
+
+    #[test]
+    fn nested_minimal() {
+        let world = World::new();
+        world.component::<Persist>();
+        world.component::<Health>().meta().add::<Persist>();
+        world.component::<Unit>().meta().add::<Persist>();
+        let e = world.entity().set(Unit {
+            name: "VillagerA".into(),
+            health: Health { max: 5, current: 3 },
+        });
+        println!("{}", e.to_json(None));
     }
 }
