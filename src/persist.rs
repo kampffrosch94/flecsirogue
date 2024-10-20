@@ -20,7 +20,7 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             if ev.has::<Persist>() {
                 println!("[{:?}]", ev.archetype());
                 if ev.has::<TypeSerializer>() {
-                    let json = world.to_json_id(comp, e.get_untyped(comp) );
+                    let json = world.to_json_id(comp, e.get_untyped(comp));
                     println!("json: {}", json);
                     components.push((name, json).into());
                 } else {
@@ -35,10 +35,14 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             );
             let ev1 = comp.first_id();
             let ev2 = comp.second_id();
-	    println!("[{:?}]", ev1.archetype());
-	    println!("[{:?}]", ev2.archetype());
-            if ev1.has::<Persist>() && ev2.has::<Persist>() {
-                let json = world.to_json_id(comp, e.get_untyped(comp) );
+            if ev1.has::<Persist>() {
+		println!("Ok");
+		let pair = ecs_pair(*ev1.id(), *ev2.id());
+		println!("Got pair.");
+		let pointer = e.get_untyped(comp);
+		println!("Got pointer. null? {}", pointer.is_null());
+                let json = world.to_json_id(ev2, pointer);
+		println!("Got json.");
                 pairs.push((ev1.symbol(), ev2.symbol(), json));
             }
         } else {
@@ -126,15 +130,18 @@ mod test {
     #[test]
     fn serialize_entity_test() {
         let world = create_test_world();
+
+        let rel_target = world.entity_named("RelTarget");
         let e = world
             .entity_named("thing")
             //.entity()
             .set(Opaque { stuff: 32 })
             .set(Transparent { stuff: 42 })
             .set_pair::<SomeRel, _>(Transparent { stuff: 52 })
+            //.add_first::<SomeRel>(rel_target)
             .add::<SomeTag>();
         // TODO add relation
-	println!("{}", e.to_json(None));
+        println!("{}", e.to_json(None));
         println!("------------");
         // e.get::<&Transparent>(|_| {});
         let serialized = serialize_entity(e);
@@ -142,6 +149,20 @@ mod test {
         dbg!(serialized);
     }
 
-    // TODO test for pairs
-    // TODO test for ids
+    #[test]
+    fn quick_check_test() {
+        let world = create_test_world();
+
+        let rel_target = world.entity_named("RelTarget");
+        let e = world
+            .entity_named("thing")
+            //.entity()
+            .set(Opaque { stuff: 32 })
+            .set(Transparent { stuff: 42 })
+            .set_pair::<SomeRel, _>(Transparent { stuff: 52 })
+            //.add_first::<SomeRel>(rel_target)
+            .add::<SomeTag>();
+	assert_eq!(42, e.get::<&Transparent>(|t| t.stuff));
+	assert_eq!(52, e.get::<(&(SomeRel, Transparent),)>(|(tp,)| tp.stuff));
+    }
 }
