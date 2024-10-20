@@ -2,11 +2,12 @@ use std::{collections::HashSet, ptr::null_mut};
 
 use flecs::meta::TypeSerializer;
 use flecs_ecs::{prelude::*, sys};
+use nanoserde::{DeJson, SerJson};
 
 #[derive(Component)]
 pub struct Persist {}
 
-fn serialize_world(world: &World) -> Vec<SerializedEntity> {
+pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
     let query = world
         .query::<()>()
         .with_name("$comp")
@@ -19,7 +20,7 @@ fn serialize_world(world: &World) -> Vec<SerializedEntity> {
     es.into_iter().map(|e| serialize_entity(e.entity_view(world))).collect()
 }
 
-fn deserialize_world(world: &World, ses: &Vec<SerializedEntity>){
+pub fn deserialize_world(world: &World, ses: &Vec<SerializedEntity>){
     for se in ses.iter() {
 	deserialize_entity(world, se);
     }
@@ -27,7 +28,6 @@ fn deserialize_world(world: &World, ses: &Vec<SerializedEntity>){
 
 fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<'a> {
     let e = world.make_alive(s.id);
-    //println!("Is alive? {}", e.is_alive());
     e.set_name(&s.name);
 
     for tag in &s.tags {
@@ -125,7 +125,7 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, SerJson, DeJson)]
 pub struct SerializedComponent {
     name: String,
     value: String,
@@ -140,13 +140,13 @@ impl From<(String, String)> for SerializedComponent {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, SerJson, DeJson)]
 enum SerializedTarget {
     Component(String),
     Entity(u64),
 }
 
-#[derive(Debug)]
+#[derive(Debug, SerJson, DeJson)]
 pub struct SerializedEntity {
     id: u64,
     name: String,
@@ -209,10 +209,8 @@ mod test {
             .set_pair::<SomeRel, _>(Transparent { stuff: 52 })
             .add_first::<SomeRel>(rel_target)
             .add::<SomeTag>();
-        // TODO add relation
         println!("{}", e.to_json(None));
         println!("------------");
-        // e.get::<&Transparent>(|_| {});
         let serialized = serialize_entity(e);
         println!("------------");
         dbg!(&serialized);
@@ -231,7 +229,7 @@ mod test {
         );
     }
 
-    //#[test]
+    #[test]
     fn quick_check_test() {
         let world = create_test_world();
 
@@ -261,9 +259,11 @@ mod test {
             .add_first::<SomeRel>(rel_target)
             .add::<SomeTag>();
 
-        let s = serialize_world(&world);
+        let s = serialize_world(&world).serialize_json();
+	let ds = Vec::deserialize_json(&s).unwrap();
         let world2 = create_test_world();
-	deserialize_world(&world2, &s);
+	deserialize_world(&world2, &ds);
         dbg!(serialize_world(&world2));
+	println!("{s}");
     }
 }
