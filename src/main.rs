@@ -9,6 +9,8 @@ mod vendored;
 
 use game::*;
 use input::InputSystems;
+use nanoserde::{DeJson, SerJson};
+use persist::Persist;
 use sprite::*;
 use tilemap::*;
 use util::pos::Pos;
@@ -29,9 +31,6 @@ fn window_conf() -> Conf {
     }
 }
 
-#[derive(Component)]
-pub struct Persist {}
-
 // we use this again on loading saves
 async fn create_world() -> World {
     // not sure how to move the TextureStore into a module since it uses async for loading
@@ -51,6 +50,7 @@ async fn create_world() -> World {
         .unwrap();
 
     let world = World::new();
+
     world.component::<Persist>();
 
     world.import::<SpriteComponents>();
@@ -93,8 +93,9 @@ async fn create_world() -> World {
     world.set(store);
 
     // Creates REST server on default port (27750)
-    world.import::<stats::Stats>(); // stats for explorer
-    world.set(flecs::rest::Rest::default());
+    // TODO need to turn these off before reloading world
+    //world.import::<stats::Stats>())); // stats for explorer
+    //world.set(flecs::rest::Rest::default());
 
     return world;
 }
@@ -147,43 +148,24 @@ async fn main() {
         clear_background(BLACK);
 
         if is_key_pressed(KeyCode::F5) {
-            let query = world
-                .query::<()>()
-                .with_name("$comp")
-                .with::<Persist>()
-                .set_src_name("$comp")
-                .build();
-
-            let desc = json::IterToJsonDesc {
-                serialize_entity_ids: true,
-                serialize_values: true,
-                serialize_fields: true,
-                serialize_full_paths: true,
-                serialize_type_info: true,
-                //serialize_inherited: true,
-                //serialize_builtin: true,
-                //serialize_table:true,
-                ..Default::default()
-            };
-            let query_string = query.to_json(Some(&desc)).unwrap();
-            println!("{}", query_string);
-
-            let s = world.to_json_world(None);
-            //println!("{}", s);
+            let s = persist::serialize_world(&world).serialize_json();
             backup = Some(s);
         }
         if is_key_pressed(KeyCode::F9) {
             if let Some(ref json) = backup {
+                println!("Reloading world.");
                 let new_world = create_world().await;
-                new_world.from_json_world(json, None);
+                println!("Created world.");
+                let ds = Vec::deserialize_json(json).unwrap();
+                println!("DeJsoned.");
+                {
+                    let mut stdout = std::io::stdout();
+                    std::io::Write::flush(&mut stdout);
+                }
+                persist::deserialize_world(&new_world, &ds);
+                println!("World deserialized.");
                 world = new_world;
-                // BUG: sprites are serialized as null, even though they shouldn't be
-                // possibly a flecs bug
-                world.defer_begin();
-                world.query::<&mut Sprite>().build().each_entity(|e, _| {
-                    e.remove::<Sprite>();
-                });
-                world.defer_end();
+                println!("World reloaded!");
             }
         }
 
@@ -216,8 +198,6 @@ mod test {
     #![allow(unused)]
     use flecs_ecs::prelude::*;
     use json::{FromJsonDesc, WorldToJsonDesc};
-
-    use crate::Persist;
 
     #[derive(Component)]
     #[meta]

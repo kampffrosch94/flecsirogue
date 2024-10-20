@@ -15,14 +15,19 @@ pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
         .set_src_name("$comp")
         .build();
     let mut es = HashSet::new(); // want to have all entities only once
-    query.each_entity(|e , _| {es.insert(e.id());});
+    query.each_entity(|e, _| {
+        es.insert(e.id());
+    });
 
-    es.into_iter().map(|e| serialize_entity(e.entity_view(world))).collect()
+    es.into_iter()
+        .map(|e| serialize_entity(e.entity_view(world)))
+        .collect()
 }
 
-pub fn deserialize_world(world: &World, ses: &Vec<SerializedEntity>){
+pub fn deserialize_world(world: &World, ses: &Vec<SerializedEntity>) {
     for se in ses.iter() {
-	deserialize_entity(world, se);
+        dbg!(se);
+        deserialize_entity(world, se);
     }
 }
 
@@ -30,11 +35,13 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
     let e = world.make_alive(s.id);
     e.set_name(&s.name);
 
+    println!("Looking up tags");
     for tag in &s.tags {
         let ev = world.lookup(&tag);
         e.add_id(ev.id());
     }
 
+    println!("Looking up components");
     for comp in &s.components {
         let comp_e = world.lookup(&comp.name);
         println!("Name: {}", comp_e.name());
@@ -260,10 +267,10 @@ mod test {
             .add::<SomeTag>();
 
         let s = serialize_world(&world).serialize_json();
-	let ds = Vec::deserialize_json(&s).unwrap();
+        let ds = Vec::deserialize_json(&s).unwrap();
         let world2 = create_test_world();
-	deserialize_world(&world2, &ds);
+        deserialize_world(&world2, &ds);
         dbg!(serialize_world(&world2));
-	println!("{s}");
+        println!("{s}");
     }
 }

@@ -1,6 +1,6 @@
 use flecs_ecs::prelude::*;
 
-use crate::{util::pos::Pos, EguiContext, Persist};
+use crate::{persist::Persist, util::pos::Pos, EguiContext};
 
 #[derive(Component, Debug)]
 #[meta]
