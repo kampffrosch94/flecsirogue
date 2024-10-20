@@ -1,4 +1,3 @@
-#![allow(unused)]
 use std::ptr::null_mut;
 
 use flecs::meta::TypeSerializer;
@@ -18,22 +17,30 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
     }
 
     for comp in &s.components {
-        let ev = world.lookup(&comp.name);
-        println!("Name: {}", ev.name());
-        unsafe { sys::ecs_emplace_id(world.world_ptr_mut(), *e.id(), *ev.id(), null_mut()) };
-        let data_location = e.get_untyped_mut(ev);
-        world.from_json_id(ev, data_location, &comp.value, None);
+        let comp_e = world.lookup(&comp.name);
+        println!("Name: {}", comp_e.name());
+        unsafe { sys::ecs_emplace_id(world.world_ptr_mut(), *e.id(), *comp_e.id(), null_mut()) };
+        let data_location = e.get_untyped_mut(comp_e);
+        world.from_json_id(comp_e, data_location, &comp.value, None);
     }
 
     for (rel, target, kind) in &s.pairs {
         match kind {
             SerializedTarget::Entity(te) => {
                 let target = world.make_alive(*te);
-		let rel = world.lookup(rel);
-                e.add_id(ecs_pair(*rel.id(), *target.id()));
+                let rel = world.lookup(rel);
+		let pair = ecs_pair(*rel.id(), *target.id());
+                e.add_id(pair);
             }
             SerializedTarget::Component(json) => {
-                // TODO
+                let rel = world.lookup(rel);
+                let target = world.lookup(&target);
+		let pair = ecs_pair(*rel.id(), *target.id());
+                unsafe {
+                    sys::ecs_emplace_id(world.world_ptr_mut(), *e.id(), pair, null_mut())
+                };
+                let data_location = e.get_untyped_mut(pair);
+                world.from_json_id(target, data_location, &json, None);
             }
         }
     }
@@ -75,7 +82,6 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             if ev1.has::<Persist>() {
                 println!("Lets persist.");
                 if ev2.has::<flecs_ecs::core::flecs::Component>() {
-                    let pair = ecs_pair(*ev1.id(), *ev2.id());
                     let pointer = e.get_untyped(comp);
                     let json = world.to_json_id(ev2, pointer);
                     let s = SerializedTarget::Component(json);
