@@ -18,6 +18,7 @@ egui-miniquad = {git = "https://github.com/kampffrosch94/egui-miniquad", branch 
 egui = "*"
 itertools = "0.13.0"
 symmetric-shadowcasting = { git = "https://github.com/nsmryan/shadowcasting.git", version = "0.2.0" }
+nanoserde = "0.1.37"
 
 [profile.dev]
 opt-level = 1

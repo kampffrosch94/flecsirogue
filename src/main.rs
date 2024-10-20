@@ -5,6 +5,7 @@ mod sprite;
 mod tilemap;
 mod util;
 mod vendored;
+mod persist;
 
 use game::*;
 use input::InputSystems;
@@ -212,8 +213,11 @@ pub struct EguiContext {
 }
 
 mod test {
+    #![allow(unused)]
     use flecs_ecs::prelude::*;
     use json::{FromJsonDesc, WorldToJsonDesc};
+
+    use crate::Persist;
 
     #[derive(Component)]
     #[meta]
@@ -221,6 +225,7 @@ mod test {
         x: i32,
         y: i32,
     }
+
     #[test]
     fn serialization_test() {
         let world = World::new();
@@ -256,7 +261,7 @@ mod test {
     }
 
     #[test]
-    fn serde_relationship() {
+    fn serialize_relationship() {
         #[derive(Component)]
         #[meta]
         pub struct Eats;
@@ -285,7 +290,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic] // test will fail once things changed
+    //#[should_panic] // test will fail once things changed
     fn world_serialisation_no_meta_more() {
         #[derive(Debug)]
         struct NoDefaultHere {
@@ -299,19 +304,19 @@ mod test {
             b: NoDefaultHere,
         }
         let world = World::new();
-        world.component::<Thing>();
+        let bad_comp = world.component::<Thing>();
 
         let e = world.entity().set(Thing {
             s: "test".into(),
             stuff: 32,
             b: NoDefaultHere { x: 4.2 },
         });
+
         let s = e.to_json(None);
         println!("Output: {}", s);
         let json = world.to_json_world(None);
 
         let world2 = World::new();
-        world2.component::<Thing>();
         let desc: FromJsonDesc = FromJsonDesc {
             name: c"Test".as_ptr(),
             expr: c"Test".as_ptr(),
@@ -319,6 +324,8 @@ mod test {
             lookup_ctx: unsafe { std::mem::transmute(std::ptr::null::<std::ffi::c_void>()) },
             strict: true,
         };
+        let bad_comp = world2.component::<Thing>();
+	bad_comp.disable_self();
         world2.from_json_world(&json, Some(&desc));
         world2.new_query::<&Thing>().iterable().each(|thing| {
             dbg!(thing);
@@ -362,22 +369,161 @@ mod test {
         }
         impl Drop for Thing {
             fn drop(&mut self) {
-		if self.stuff != 32 {
+                if self.stuff != 32 {
                     panic!("I can't be dropped right now");
-		}
+                }
             }
         }
         let world = World::new();
         world.component::<Thing>();
-        world.entity_named("thing").set(Thing { stuff: 32 });
+        world.component::<crate::Persist>();
+        world.component::<Pos>().meta().add::<Persist>();
+        world
+            .entity_named("thing")
+            .set(Thing { stuff: 32 })
+            .set(Pos { x: 5, y: 3 });
         let json = world.to_json_world(None);
         println!("{}", json);
 
         let world2 = World::new();
         world2.component::<Thing>();
+        world2.component::<crate::Persist>();
+        world2.component::<Pos>().meta().add::<Persist>();
         world2.from_json_world(&json, None);
-	// fails, cause Thing is dropped without having the correct value
-	world.entity_named("thing").destruct(); 
-	println!("Done.");
+        // fails, cause Thing is dropped without having the correct value
+        world.entity_named("thing").destruct();
+        println!("Done.");
+    }
+
+    #[test]
+    fn query_serialisation() {
+        // notice how we are NOT adding #[meta] to this
+        #[derive(Component, Debug)]
+        pub struct Thing {
+            stuff: u32,
+        }
+        impl Drop for Thing {
+            fn drop(&mut self) {
+                if self.stuff != 32 {
+                    panic!("I can't be dropped right now");
+                }
+            }
+        }
+
+        #[derive(Component, Debug)]
+        #[meta]
+        pub struct Health {
+            current: u32,
+        }
+
+        let world = World::new();
+        world.component::<Thing>();
+        world.component::<crate::Persist>();
+        world.component::<Pos>().meta().add::<Persist>();
+        world.component::<Health>().meta().add::<Persist>();
+        world
+            .entity_named("thing")
+            .set(Thing { stuff: 32 })
+            .set(Pos { x: 5, y: 3 })
+            .set(Health { current: 2 });
+
+        let query = world
+            .query::<()>()
+            .with_name("$comp")
+            .with::<crate::Persist>()
+            .set_src_name("$comp")
+            .build();
+
+        let desc = json::IterToJsonDesc {
+            serialize_entity_ids: true,
+            serialize_values: true,
+            serialize_fields: true,
+            serialize_full_paths: true,
+            serialize_type_info: true,
+            //serialize_inherited: true,
+            //serialize_builtin: true,
+            serialize_table: true,
+            ..Default::default()
+        };
+        let json = query.to_json(Some(&desc)).unwrap();
+        println!("{}", json);
+
+        let world2 = World::new();
+        world2.component::<Thing>();
+        world2.component::<crate::Persist>();
+        world2.component::<Pos>().meta().add::<Persist>();
+        world2.from_json_world(&json, None);
+        world2
+            .entity_named("thing")
+            .get::<(&Pos, &Health)>(|(pos, hp)| {
+                assert_eq!(5, pos.x);
+                assert_eq!(2, hp.current);
+            });
+    }
+
+    #[test]
+    fn serialize_entity() {
+        // notice how we are NOT adding #[meta] to this
+        #[derive(Component, Debug)]
+        pub struct Thing {
+            stuff: u32,
+        }
+        impl Drop for Thing {
+            fn drop(&mut self) {
+                if self.stuff != 32 {
+                    panic!("I can't be dropped right now");
+                }
+            }
+        }
+
+        #[derive(Component, Debug)]
+        #[meta]
+        pub struct Health {
+            current: u32,
+        }
+
+        let world = World::new();
+        let bad_comp = world.component::<Thing>();
+        world.component::<crate::Persist>();
+        world.component::<Pos>().meta().add::<Persist>();
+        world.component::<Health>().meta().add::<Persist>();
+        let e = world
+            .entity_named("thing")
+            .set(Thing { stuff: 32 })
+            .set(Pos { x: 5, y: 3 })
+            .set(Health { current: 2 });
+
+        let json = e.to_json(None);
+        println!("{}", json);
+
+        let world2 = World::new();
+        world2.component::<crate::Persist>();
+        world2.component::<Health>().meta().add::<Persist>();
+        world2.component::<Pos>().meta().add::<Persist>();
+        let e = world2.entity().from_json(&json);
+        let json = e.to_json(None);
+        println!("------");
+        println!("{}", json);
+        println!("------");
+
+        e.each_component(|comp| {
+            if comp.is_entity() {
+                println!("comp: {}", comp.entity_view().name());
+            } else if comp.is_pair() {
+                println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
+            } else {
+                println!("No idea what this: {:?}", comp);
+            }
+        });
+
+        let bad_comp = world2.component::<Thing>();
+	//e.set(Thing{ stuff: 32 }); 
+
+        world2
+            .entity_named("thing")
+            .get::<(&Pos, &Health)>(|(pos, hp)| {
+                assert_eq!(5, pos.x);
+                assert_eq!(2, hp.current);
+            });
     }
 }
