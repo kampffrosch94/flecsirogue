@@ -30,20 +30,24 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
         } else if comp.is_pair() {
             println!(
                 "Pair {} + {}",
-                comp.first_id().symbol(),
-                comp.second_id().symbol()
+                comp.first_id().name(),
+                comp.second_id().name()
             );
             let ev1 = comp.first_id();
             let ev2 = comp.second_id();
             if ev1.has::<Persist>() {
-		println!("Ok");
-		let pair = ecs_pair(*ev1.id(), *ev2.id());
-		println!("Got pair.");
-		let pointer = e.get_untyped(comp);
-		println!("Got pointer. null? {}", pointer.is_null());
-                let json = world.to_json_id(ev2, pointer);
-		println!("Got json.");
-                pairs.push((ev1.symbol(), ev2.symbol(), json));
+                println!("Lets persist.");
+                if ev2.has::<flecs_ecs::core::flecs::Component>() {
+                    let pair = ecs_pair(*ev1.id(), *ev2.id());
+                    let pointer = e.get_untyped(comp);
+                    let json = world.to_json_id(ev2, pointer);
+                    let s = SerializedTarget::Component(json);
+                    pairs.push((ev1.symbol(), ev2.symbol(), s));
+                    //println!("[{:?}]", ev2.archetype());
+                } else {
+                    let s = SerializedTarget::Entity(*ev2.id());
+                    pairs.push((ev1.symbol(), ev2.name(), s));
+                }
             }
         } else {
             panic!("No idea what this is: {:?}", comp);
@@ -77,11 +81,17 @@ impl From<(String, String)> for SerializedComponent {
 }
 
 #[derive(Debug)]
+enum SerializedTarget {
+    Component(String),
+    Entity(u64),
+}
+
+#[derive(Debug)]
 pub struct SerializedEntity {
     id: u64,
     name: String,
     components: Vec<SerializedComponent>,
-    pairs: Vec<(String, String, String)>,
+    pairs: Vec<(String, String, SerializedTarget)>,
     tags: Vec<String>,
 }
 
@@ -134,11 +144,10 @@ mod test {
         let rel_target = world.entity_named("RelTarget");
         let e = world
             .entity_named("thing")
-            //.entity()
             .set(Opaque { stuff: 32 })
             .set(Transparent { stuff: 42 })
             .set_pair::<SomeRel, _>(Transparent { stuff: 52 })
-            //.add_first::<SomeRel>(rel_target)
+            .add_first::<SomeRel>(rel_target)
             .add::<SomeTag>();
         // TODO add relation
         println!("{}", e.to_json(None));
@@ -160,9 +169,9 @@ mod test {
             .set(Opaque { stuff: 32 })
             .set(Transparent { stuff: 42 })
             .set_pair::<SomeRel, _>(Transparent { stuff: 52 })
-            //.add_first::<SomeRel>(rel_target)
+            .add_first::<SomeRel>(rel_target)
             .add::<SomeTag>();
-	assert_eq!(42, e.get::<&Transparent>(|t| t.stuff));
-	assert_eq!(52, e.get::<(&(SomeRel, Transparent),)>(|(tp,)| tp.stuff));
+        assert_eq!(42, e.get::<&Transparent>(|t| t.stuff));
+        assert_eq!(52, e.get::<(&(SomeRel, Transparent),)>(|(tp,)| tp.stuff));
     }
 }
