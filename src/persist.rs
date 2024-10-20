@@ -1,9 +1,21 @@
 #![allow(unused)]
 use flecs::meta::TypeSerializer;
-use flecs_ecs::prelude::*;
+use flecs_ecs::{prelude::*, sys};
 
 #[derive(Component)]
 pub struct Persist {}
+
+fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<'a> {
+    let e = world.make_alive(s.id);
+    println!("Is alive? {}", e.is_alive());
+    for tag in &s.tags {
+        let ev = world.lookup(&tag);
+	println!("Name: {}", ev.name());
+	e.add_id(ev.id());
+    }
+    println!("Done here.");
+    e
+}
 
 fn serialize_entity(e: EntityView) -> SerializedEntity {
     let world = e.world();
@@ -155,10 +167,16 @@ mod test {
         // e.get::<&Transparent>(|_| {});
         let serialized = serialize_entity(e);
         println!("------------");
-        dbg!(serialized);
+        dbg!(&serialized);
+	let id = e.id();
+
+        let world2 = create_test_world();
+        println!("------------");
+        let deserialized = deserialize_entity(&world2, &serialized);
+        println!("[{:?}]", deserialized.archetype());
     }
 
-    #[test]
+    //#[test]
     fn quick_check_test() {
         let world = create_test_world();
 
