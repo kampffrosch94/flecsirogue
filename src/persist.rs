@@ -1,10 +1,29 @@
-use std::ptr::null_mut;
+use std::{collections::HashSet, ptr::null_mut};
 
 use flecs::meta::TypeSerializer;
 use flecs_ecs::{prelude::*, sys};
 
 #[derive(Component)]
 pub struct Persist {}
+
+fn serialize_world(world: &World) -> Vec<SerializedEntity> {
+    let query = world
+        .query::<()>()
+        .with_name("$comp")
+        .with::<Persist>()
+        .set_src_name("$comp")
+        .build();
+    let mut es = HashSet::new(); // want to have all entities only once
+    query.each_entity(|e , _| {es.insert(e.id());});
+
+    es.into_iter().map(|e| serialize_entity(e.entity_view(world))).collect()
+}
+
+fn deserialize_world(world: &World, ses: &Vec<SerializedEntity>){
+    for se in ses.iter() {
+	deserialize_entity(world, se);
+    }
+}
 
 fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<'a> {
     let e = world.make_alive(s.id);
@@ -29,16 +48,14 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
             SerializedTarget::Entity(te) => {
                 let target = world.make_alive(*te);
                 let rel = world.lookup(rel);
-		let pair = ecs_pair(*rel.id(), *target.id());
+                let pair = ecs_pair(*rel.id(), *target.id());
                 e.add_id(pair);
             }
             SerializedTarget::Component(json) => {
                 let rel = world.lookup(rel);
                 let target = world.lookup(&target);
-		let pair = ecs_pair(*rel.id(), *target.id());
-                unsafe {
-                    sys::ecs_emplace_id(world.world_ptr_mut(), *e.id(), pair, null_mut())
-                };
+                let pair = ecs_pair(*rel.id(), *target.id());
+                unsafe { sys::ecs_emplace_id(world.world_ptr_mut(), *e.id(), pair, null_mut()) };
                 let data_location = e.get_untyped_mut(pair);
                 world.from_json_id(target, data_location, &json, None);
             }
@@ -208,7 +225,10 @@ mod test {
         println!("------------");
         dbg!(serialize_entity(deserialized));
         assert_eq!(42, deserialized.get::<&Transparent>(|t| t.stuff));
-        assert_eq!(52, deserialized.get::<(&(SomeRel, Transparent),)>(|(tp,)| tp.stuff));
+        assert_eq!(
+            52,
+            deserialized.get::<(&(SomeRel, Transparent),)>(|(tp,)| tp.stuff)
+        );
     }
 
     //#[test]
@@ -226,5 +246,24 @@ mod test {
             .add::<SomeTag>();
         assert_eq!(42, e.get::<&Transparent>(|t| t.stuff));
         assert_eq!(52, e.get::<(&(SomeRel, Transparent),)>(|(tp,)| tp.stuff));
+    }
+
+    #[test]
+    fn serialize_world_test() {
+        let world = create_test_world();
+
+        let rel_target = world.entity_named("RelTarget").add::<SomeTag>();
+        let e = world
+            .entity_named("thing")
+            .set(Opaque { stuff: 32 })
+            .set(Transparent { stuff: 42 })
+            .set_pair::<SomeRel, _>(Transparent { stuff: 52 })
+            .add_first::<SomeRel>(rel_target)
+            .add::<SomeTag>();
+
+        let s = serialize_world(&world);
+        let world2 = create_test_world();
+	deserialize_world(&world2, &s);
+        dbg!(serialize_world(&world2));
     }
 }
