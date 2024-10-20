@@ -10,7 +10,7 @@ mod vendored;
 use game::*;
 use input::InputSystems;
 use nanoserde::{DeJson, SerJson};
-use persist::Persist;
+use persist::Persister;
 use sprite::*;
 use tilemap::*;
 use util::pos::Pos;
@@ -51,7 +51,7 @@ async fn create_world() -> World {
 
     let world = World::new();
 
-    world.component::<Persist>();
+    world.component::<Persister>();
 
     world.import::<SpriteComponents>();
     world.import::<GameComponents>();
@@ -190,12 +190,16 @@ pub struct EguiContext {
     pub ctx: &'static egui::Context,
 }
 
+#[cfg(test)]
 mod test {
     #![allow(unused)]
     use flecs_ecs::prelude::*;
     use json::{FromJsonDesc, WorldToJsonDesc};
 
-    use crate::persist::Persist;
+    use crate::persist::Persister;
+
+    #[derive(Component)]
+    pub struct Persist {}
 
     #[derive(Component)]
     #[meta]

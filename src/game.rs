@@ -1,19 +1,22 @@
 use flecs_ecs::prelude::*;
+use nanoserde::{DeJson, SerJson};
 
-use crate::{persist::Persist, util::pos::Pos, EguiContext};
+use crate::{persist::Persister, util::pos::Pos, EguiContext};
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, DeJson, SerJson, Default)]
 #[meta]
-pub struct Player;
+pub struct Player {
+    filler: u32,
+}
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, DeJson, SerJson)]
 #[meta]
 pub struct Unit {
     pub name: String,
     pub health: Health,
 }
 
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone, Component, DeJson, SerJson)]
 #[meta]
 pub struct Health {
     pub max: i32,
@@ -31,10 +34,19 @@ pub struct GameComponents {}
 impl Module for GameComponents {
     fn module(world: &World) {
         world.module::<GameComponents>("GameComponents");
-        world.component::<Pos>().meta().add::<Persist>();
-        world.component::<Player>().meta().add::<Persist>();
-        world.component::<Health>().meta().add::<Persist>();
-        world.component::<Unit>().meta().add::<Persist>();
+        world.component::<Pos>().meta().set(Persister::new::<Pos>());
+        world
+            .component::<Player>()
+            .meta()
+            .set(Persister::new::<Player>());
+        world
+            .component::<Health>()
+            .meta()
+            .set(Persister::new::<Health>());
+        world
+            .component::<Unit>()
+            .meta()
+            .set(Persister::new::<Unit>());
         world.component::<MessageLog>();
         world.component::<EguiContext>();
     }

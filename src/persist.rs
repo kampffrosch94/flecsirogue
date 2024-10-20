@@ -4,6 +4,11 @@ use flecs::meta::TypeSerializer;
 use flecs_ecs::{prelude::*, sys};
 use nanoserde::{DeJson, SerJson};
 
+// TODO
+// [ ] Pairs
+// [ ] extension function
+// [ ] Persister with zero sized types
+
 #[derive(Component)]
 pub struct Persister {
     pub serializer: Box<fn(EntityView) -> String>,
@@ -11,11 +16,14 @@ pub struct Persister {
 }
 
 impl Persister {
-    fn new<T>() -> Self
-    where T: ComponentId + DataComponent + DeJson + SerJson,
+    pub fn new<T>() -> Self
+    where
+        T: ComponentId + DataComponent + DeJson + SerJson,
     {
-	let ser = |ev: EntityView| ev.get::<&T>(|t| t.serialize_json());
-	let deser = |ev: EntityView, s: &str| {ev.set(T::deserialize_json(s).unwrap());};
+        let ser = |ev: EntityView| ev.get::<&T>(|t| t.serialize_json());
+        let deser = |ev: EntityView, s: &str| {
+            ev.set(T::deserialize_json(s).unwrap());
+        };
         Self {
             serializer: Box::new(ser),
             deserializer: Box::new(deser),
@@ -23,15 +31,11 @@ impl Persister {
     }
 }
 
-
-#[derive(Component)]
-pub struct Persist {}
-
 pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
     let query = world
         .query::<()>()
         .with_name("$comp")
-        .with::<Persist>()
+        .with::<Persister>()
         .set_src_name("$comp")
         .build();
     let mut es = HashSet::new(); // want to have all entities only once
@@ -67,13 +71,7 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
     for comp in &s.components {
         dbg!(comp);
         let comp_e = world.try_lookup(&comp.name).unwrap();
-        println!("Name: {}", comp_e.name());
-        unsafe { sys::ecs_emplace_id(world.world_ptr_mut(), *e.id(), *comp_e.id(), null_mut()) };
-        println!("Emplaced");
-        let data_location = e.get_untyped_mut(comp_e);
-        println!("Got untyped");
-        world.from_json_id(comp_e, data_location, &comp.value, None);
-        println!("DeJsoned");
+        comp_e.get::<&Persister>(|p| (p.deserializer)(e, &comp.value));
     }
 
     for (rel, target, kind) in &s.pairs {
@@ -85,6 +83,7 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
                 e.add_id(pair);
             }
             SerializedTarget::Component(json) => {
+                // FIXME use new Persister pipeline
                 let rel = world.lookup(rel);
                 let target = world.lookup(&target);
                 let pair = ecs_pair(*rel.id(), *target.id());
@@ -111,11 +110,10 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             let ev = comp.entity_view();
             let name = ev.path().unwrap();
             //println!("comp: {}", name);
-            if ev.has::<Persist>() {
+            if ev.has::<Persister>() {
                 //println!("[{:?}]", ev.archetype());
                 if ev.has::<TypeSerializer>() {
-                    let json = world.to_json_id(comp, e.get_untyped(comp));
-                    //println!("json: {}", json);
+                    let json = ev.get::<&Persister>(|p| (p.serializer)(e));
                     components.push((name, json).into());
                 } else {
                     tags.push(ev.path().unwrap());
@@ -125,7 +123,7 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             //println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
             let ev1 = comp.first_id();
             let ev2 = comp.second_id();
-            if ev1.has::<Persist>() {
+            if ev1.has::<Persister>() {
                 // println!("Lets persist.");
                 if ev2.has::<flecs_ecs::core::flecs::Component>() {
                     let pointer = e.get_untyped(comp);
@@ -184,6 +182,7 @@ pub struct SerializedEntity {
     tags: Vec<String>,
 }
 
+#[cfg(test)]
 mod test {
     #![allow(unused)]
     use crate::{Health, Unit};
@@ -328,5 +327,38 @@ mod test {
             health: Health { max: 5, current: 3 },
         });
         println!("{}", e.to_json(None));
+    }
+
+    #[test]
+    fn persister_test() {
+        let world = World::new();
+        world.component::<Persister>();
+        world
+            .component::<Health>()
+            .meta()
+            .set(Persister::new::<Health>());
+        world
+            .component::<Unit>()
+            .meta()
+            .set(Persister::new::<Unit>());
+        let e = world.entity().set(Unit {
+            name: "VillagerA".into(),
+            health: Health { max: 5, current: 3 },
+        });
+        let s = serialize_world(&world).serialize_json();
+        let ds = Vec::deserialize_json(&s).unwrap();
+        let world2 = World::new();
+        world2.component::<Persister>();
+        world2
+            .component::<Health>()
+            .meta()
+            .set(Persister::new::<Health>());
+        world2
+            .component::<Unit>()
+            .meta()
+            .set(Persister::new::<Unit>());
+        deserialize_world(&world2, &ds);
+        dbg!(serialize_world(&world2));
+        println!("{s}");
     }
 }

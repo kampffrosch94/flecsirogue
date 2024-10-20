@@ -4,8 +4,9 @@ use std::ops::{Add, AddAssign};
 use derive_more::From;
 use derive_more::Into;
 use flecs_ecs::prelude::Component;
+use nanoserde::{DeJson, SerJson};
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, From, Into, Debug, Component)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, From, Into, Debug, Component, DeJson, SerJson)]
 #[meta]
 pub struct Pos {
     pub x: i32,
