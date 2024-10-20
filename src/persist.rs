@@ -18,15 +18,14 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             let name = ev.symbol();
             println!("comp: {}", name);
             if ev.has::<Persist>() {
-		println!("[{:?}]", ev.archetype());
-		if ev.has::<TypeSerializer>() {
-		    let fetched = FetchedId::new(*comp.id());
-		    let json = world.to_json_dyn(fetched, unsafe { &*e.get_untyped(comp) });
-		    println!("json: {}", json);
-		    components.push((name, json).into());
-		} else {
-		    tags.push(ev.symbol());
-		}
+                println!("[{:?}]", ev.archetype());
+                if ev.has::<TypeSerializer>() {
+                    let json = world.to_json_id(comp, e.get_untyped(comp) );
+                    println!("json: {}", json);
+                    components.push((name, json).into());
+                } else {
+                    tags.push(ev.symbol());
+                }
             }
         } else if comp.is_pair() {
             println!(
@@ -36,15 +35,11 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             );
             let ev1 = comp.first_id();
             let ev2 = comp.second_id();
+	    println!("[{:?}]", ev1.archetype());
+	    println!("[{:?}]", ev2.archetype());
             if ev1.has::<Persist>() && ev2.has::<Persist>() {
-                let fetched = FetchedId::new(*comp.id());
-                let json = world.to_json_dyn(fetched, unsafe { &*e.get_untyped(comp) });
-		pairs.push((ev1.symbol(), ev2.symbol(), json));
-
-                // let json1 = world.to_json_dyn(FetchedId::new(*ev1.id()), unsafe { &*e.get_untyped(ev1) });
-                // let json2 = world.to_json_dyn(FetchedId::new(*ev2.id()), unsafe { &*e.get_untyped(ev2) });
-                // panic!("TODO I am not sure how Pairs work yet"));
-                // are pairs made out of arbitrary components? or always (Tag, NormalComponent)?
+                let json = world.to_json_id(comp, e.get_untyped(comp) );
+                pairs.push((ev1.symbol(), ev2.symbol(), json));
             }
         } else {
             panic!("No idea what this is: {:?}", comp);
@@ -136,7 +131,10 @@ mod test {
             //.entity()
             .set(Opaque { stuff: 32 })
             .set(Transparent { stuff: 42 })
-	    .add::<SomeTag>();
+            .set_pair::<SomeRel, _>(Transparent { stuff: 52 })
+            .add::<SomeTag>();
+        // TODO add relation
+	println!("{}", e.to_json(None));
         println!("------------");
         // e.get::<&Transparent>(|_| {});
         let serialized = serialize_entity(e);

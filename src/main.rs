@@ -452,6 +452,7 @@ mod test {
         world2.component::<Thing>();
         world2.component::<crate::Persist>();
         world2.component::<Pos>().meta().add::<Persist>();
+        world2.component::<Health>().meta().add::<Persist>();
         world2.from_json_world(&json, None);
         world2
             .entity_named("thing")
