@@ -207,6 +207,8 @@ mod test {
         println!("[{:?}]", deserialized.archetype());
         println!("------------");
         dbg!(serialize_entity(deserialized));
+        assert_eq!(42, deserialized.get::<&Transparent>(|t| t.stuff));
+        assert_eq!(52, deserialized.get::<(&(SomeRel, Transparent),)>(|(tp,)| tp.stuff));
     }
 
     //#[test]
