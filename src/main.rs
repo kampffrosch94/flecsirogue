@@ -1,11 +1,11 @@
 mod camera;
 mod game;
 mod input;
+mod persist;
 mod sprite;
 mod tilemap;
 mod util;
 mod vendored;
-mod persist;
 
 use game::*;
 use input::InputSystems;
@@ -325,7 +325,7 @@ mod test {
             strict: true,
         };
         let bad_comp = world2.component::<Thing>();
-	bad_comp.disable_self();
+        bad_comp.disable_self();
         world2.from_json_world(&json, Some(&desc));
         world2.new_query::<&Thing>().iterable().each(|thing| {
             dbg!(thing);
@@ -510,14 +510,18 @@ mod test {
             if comp.is_entity() {
                 println!("comp: {}", comp.entity_view().name());
             } else if comp.is_pair() {
-                println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
+                println!(
+                    "Pair {} + {}",
+                    comp.first_id().name(),
+                    comp.second_id().name()
+                );
             } else {
                 println!("No idea what this: {:?}", comp);
             }
         });
 
         let bad_comp = world2.component::<Thing>();
-	//e.set(Thing{ stuff: 32 }); 
+        //e.set(Thing{ stuff: 32 });
 
         world2
             .entity_named("thing")
