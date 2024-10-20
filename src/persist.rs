@@ -1,4 +1,6 @@
 #![allow(unused)]
+use std::ptr::null_mut;
+
 use flecs::meta::TypeSerializer;
 use flecs_ecs::{prelude::*, sys};
 
@@ -7,12 +9,35 @@ pub struct Persist {}
 
 fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<'a> {
     let e = world.make_alive(s.id);
-    println!("Is alive? {}", e.is_alive());
+    //println!("Is alive? {}", e.is_alive());
+    e.set_name(&s.name);
+
     for tag in &s.tags {
         let ev = world.lookup(&tag);
-	println!("Name: {}", ev.name());
-	e.add_id(ev.id());
+        e.add_id(ev.id());
     }
+
+    for comp in &s.components {
+        let ev = world.lookup(&comp.name);
+        println!("Name: {}", ev.name());
+        unsafe { sys::ecs_emplace_id(world.world_ptr_mut(), *e.id(), *ev.id(), null_mut()) };
+        let data_location = e.get_untyped_mut(ev);
+        world.from_json_id(ev, data_location, &comp.value, None);
+    }
+
+    for (rel, target, kind) in &s.pairs {
+        match kind {
+            SerializedTarget::Entity(te) => {
+                let target = world.make_alive(*te);
+		let rel = world.lookup(rel);
+                e.add_id(ecs_pair(*rel.id(), *target.id()));
+            }
+            SerializedTarget::Component(json) => {
+                // TODO
+            }
+        }
+    }
+
     println!("Done here.");
     e
 }
@@ -168,12 +193,14 @@ mod test {
         let serialized = serialize_entity(e);
         println!("------------");
         dbg!(&serialized);
-	let id = e.id();
+        let id = e.id();
 
         let world2 = create_test_world();
         println!("------------");
         let deserialized = deserialize_entity(&world2, &serialized);
         println!("[{:?}]", deserialized.archetype());
+        println!("------------");
+        dbg!(serialize_entity(deserialized));
     }
 
     //#[test]
