@@ -2,7 +2,7 @@ use flecs_ecs::prelude::*;
 use nanoserde::{DeJson, SerJson};
 
 use crate::{
-    persist::{PersistExtension, PersistTagExtension, Persister},
+    persist::{PersistExtension, PersistTagExtension},
     util::pos::Pos,
     EguiContext,
 };

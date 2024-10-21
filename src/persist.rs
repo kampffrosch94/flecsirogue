@@ -14,7 +14,6 @@ use nanoserde::{DeJson, SerJson};
 #[derive(Component)]
 pub struct Persist {}
 
-// TODO implement for both
 pub trait PersistExtension {
     fn persist(&self) -> EntityView;
 }
@@ -61,10 +60,16 @@ impl Persister {
         };
 
         let second_ser = |ev: EntityView, first: Entity| {
-            ev.get_ref_second::<&T>(first).get(|t| t.serialize_json())
+	    println!("Second Ser running");
+	    println!("First  {:?}", first);
+	    println!("Second {:?}", std::any::type_name::<T>());
+            let r = ev.get_ref_second::<T>(first).get(|t| t.serialize_json());
+	    println!("Second Ser done");
+	    r
         };
 
         let second_deser = |ev: EntityView, first: Entity, s: &str| {
+	    println!("Second DeSer running");
             ev.set_second(first, T::deserialize_json(s).unwrap());
         };
 
@@ -149,9 +154,9 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
         if comp.is_entity() {
             let ev = comp.entity_view();
             let name = ev.path().unwrap();
-            //println!("comp: {}", name);
+            println!("comp: {}", name);
             if ev.has::<Persist>() {
-                //println!("[{:?}]", ev.archetype());
+                println!("[{:?}]", ev.archetype());
                 if ev.has::<TypeSerializer>() {
                     let json = ev.get::<&Persister>(|p| (p.serializer)(e));
                     components.push((name, json).into());
@@ -160,13 +165,14 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
                 }
             }
         } else if comp.is_pair() {
-            //println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
+            println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
             let rel = comp.first_id();
             let target = comp.second_id();
-            // FIXME use Persister
             if rel.has::<Persist>() {
                 if target.has::<flecs_ecs::core::flecs::Component>() {
-                    let json = target.get::<&Persister>(|p| (p.second_serializer)(e, rel.id()));
+                    let json = target
+                        .try_get::<&Persister>(|p| (p.second_serializer)(e, rel.id()))
+                        .expect("Component should have a Persister registered");
                     let s = SerializedTarget::Component(json);
                     pairs.push((rel.path().unwrap(), target.path().unwrap(), s));
                     //println!("[{:?}]", ev2.archetype());
@@ -180,7 +186,7 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
         }
     });
 
-    println!("Done");
+    //println!("Done");
 
     SerializedEntity {
         id: e.id().0,
@@ -206,7 +212,7 @@ impl From<(String, String)> for SerializedComponent {
     }
 }
 
-#[derive(Debug, SerJson, DeJson)]
+#[derive(Debug, SerJson, DeJson, PartialEq)]
 enum SerializedTarget {
     Component(String),
     Entity(u64),
@@ -229,7 +235,7 @@ mod test {
     use super::*;
     use flecs_ecs::prelude::*;
 
-    #[derive(Component, Debug)]
+    #[derive(Component, Debug, SerJson, DeJson)]
     pub struct Opaque {
         stuff: u32,
     }
@@ -242,7 +248,7 @@ mod test {
         }
     }
 
-    #[derive(Component, Debug)]
+    #[derive(Component, Debug, SerJson, DeJson)]
     #[meta]
     pub struct Transparent {
         stuff: u32,
@@ -259,12 +265,13 @@ mod test {
     fn create_test_world() -> World {
         let world = World::new();
         world.component::<Persist>();
+        world.component::<Persister>();
         world.component::<Opaque>();
-        world.component::<Transparent>().meta().add::<Persist>();
-        world.component::<SomeTag>().meta().add::<Persist>();
-        world.component::<SomeRel>().meta().add::<Persist>();
-        world.component::<Health>().meta().add::<Persist>();
-        world.component::<Unit>().meta().add::<Persist>();
+        world.component::<Transparent>().meta().persist();
+        world.component::<SomeTag>().meta().persist();
+        world.component::<SomeRel>().meta().persist();
+        world.component::<Health>().meta().persist();
+        world.component::<Unit>().meta().persist();
         return world;
     }
 
@@ -283,6 +290,10 @@ mod test {
         println!("{}", e.to_json(None));
         println!("------------");
         let serialized = serialize_entity(e);
+        assert_eq!(
+            SerializedTarget::Component("{\"stuff\":52}".into()),
+            serialized.pairs[0].2
+        );
         println!("------------");
         dbg!(&serialized);
         let id = e.id();
@@ -339,28 +350,11 @@ mod test {
     }
 
     #[test]
-    fn serialize_world_nested_test() {
-        let world = create_test_world();
-        let e = world.entity().set(Unit {
-            name: "VillagerA".into(),
-            health: Health { max: 5, current: 3 },
-        });
-        println!("{}", e.to_json(None));
-
-        let s = serialize_world(&world).serialize_json();
-        let ds = Vec::deserialize_json(&s).unwrap();
-        let world2 = create_test_world();
-        deserialize_world(&world2, &ds);
-        dbg!(serialize_world(&world2));
-        println!("{s}");
-    }
-
-    #[test]
     fn nested_minimal() {
         let world = World::new();
         world.component::<Persist>();
-        world.component::<Health>().meta().add::<Persist>();
-        world.component::<Unit>().meta().add::<Persist>();
+        world.component::<Health>().meta();
+        world.component::<Unit>().meta();
         let e = world.entity().set(Unit {
             name: "VillagerA".into(),
             health: Health { max: 5, current: 3 },
@@ -390,5 +384,22 @@ mod test {
         deserialize_world(&world2, &ds);
         dbg!(serialize_world(&world2));
         println!("{s}");
+    }
+
+    #[test]
+    fn check_pair_understading() {
+        let world = create_test_world();
+        let rel_target = world.entity_named("RelTarget");
+        let e = world
+            .entity_named("thing")
+            .set(Opaque { stuff: 32 })
+            .set(Transparent { stuff: 42 })
+            .set_pair::<SomeRel, _>(Transparent { stuff: 52 })
+            .add_first::<SomeRel>(rel_target)
+            .add::<SomeTag>();
+
+	dbg!(SomeRel::id(&world));
+	dbg!(e.get_ref_second::<Transparent>(SomeRel::id(&world)).get(|t| t.stuff));
+	dbg!(e.get_ref_second::<Transparent>(SomeRel::get_id(&world)).get(|t| t.stuff));
     }
 }
