@@ -10,7 +10,7 @@ mod vendored;
 use game::*;
 use input::InputSystems;
 use nanoserde::{DeJson, SerJson};
-use persist::Persister;
+use persist::{Persist, Persister};
 use sprite::*;
 use tilemap::*;
 use util::pos::Pos;
@@ -51,7 +51,8 @@ async fn create_world() -> World {
 
     let world = World::new();
 
-    let c: Component<'_, Persister> = world.component::<Persister>();
+    world.component::<Persist>();
+    world.component::<Persister>();
 
     world.import::<SpriteComponents>();
     world.import::<GameComponents>();

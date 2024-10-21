@@ -1,14 +1,15 @@
-use std::{collections::HashSet, ptr::null_mut};
+use std::collections::HashSet;
 
 use flecs::meta::TypeSerializer;
-use flecs_ecs::{prelude::*, sys};
+use flecs_ecs::prelude::*;
 use nanoserde::{DeJson, SerJson};
 
 // TODO
-// [ ] Pairs
-// [ ] extension function
-// [ ] Persister with zero sized types
-// [ ] readd Persist marker
+// [x] Pairs
+// [x] extension function
+// [x] Persister with zero sized types
+// [x] readd Persist marker
+// [ ] update tests
 
 #[derive(Component)]
 pub struct Persist {}
@@ -19,14 +20,14 @@ pub trait PersistExtension {
 }
 
 pub trait PersistTagExtension {
-    fn persist_tag(&self) -> EntityView;
+    fn persist(&self) -> EntityView;
 }
 
 impl<T> PersistTagExtension for Component<'_, T>
 where
     T: TagComponent,
 {
-    fn persist_tag(&self) -> EntityView {
+    fn persist(&self) -> EntityView {
         self.add::<Persist>()
     }
 }
@@ -35,7 +36,7 @@ impl<T> PersistExtension for Component<'_, T>
 where
     T: ComponentId + DataComponent + DeJson + SerJson + ComponentType<Struct>,
 {
-    fn persist(& self) -> EntityView {
+    fn persist(&self) -> EntityView {
         self.set(Persister::new::<T>()).add::<Persist>()
     }
 }
@@ -140,8 +141,6 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
 }
 
 fn serialize_entity(e: EntityView) -> SerializedEntity {
-    let world = e.world();
-
     let mut components = Vec::new();
     let mut pairs = Vec::new();
     let mut tags = Vec::new();
@@ -151,7 +150,7 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             let ev = comp.entity_view();
             let name = ev.path().unwrap();
             //println!("comp: {}", name);
-            if ev.has::<Persister>() {
+            if ev.has::<Persist>() {
                 //println!("[{:?}]", ev.archetype());
                 if ev.has::<TypeSerializer>() {
                     let json = ev.get::<&Persister>(|p| (p.serializer)(e));
@@ -165,7 +164,7 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             let rel = comp.first_id();
             let target = comp.second_id();
             // FIXME use Persister
-            if rel.has::<Persister>() && target.has::<Persister>() {
+            if rel.has::<Persist>() {
                 if target.has::<flecs_ecs::core::flecs::Component>() {
                     let json = target.get::<&Persister>(|p| (p.second_serializer)(e, rel.id()));
                     let s = SerializedTarget::Component(json);
@@ -374,15 +373,9 @@ mod test {
         let world = World::new();
         world.component::<Persist>();
         world.component::<Persister>();
-        world
-            .component::<Health>()
-            .meta()
-            .persist();
-            
-        world
-            .component::<Unit>()
-            .meta()
-            .persist();
+        world.component::<Health>().meta().persist();
+
+        world.component::<Unit>().meta().persist();
         let e = world.entity().set(Unit {
             name: "VillagerA".into(),
             health: Health { max: 5, current: 3 },
@@ -392,14 +385,8 @@ mod test {
         let world2 = World::new();
         world2.component::<Persist>();
         world2.component::<Persister>();
-        world2
-            .component::<Health>()
-            .meta()
-            .persist();
-        world2
-            .component::<Unit>()
-            .meta()
-            .persist();
+        world2.component::<Health>().meta().persist();
+        world2.component::<Unit>().meta().persist();
         deserialize_world(&world2, &ds);
         dbg!(serialize_world(&world2));
         println!("{s}");

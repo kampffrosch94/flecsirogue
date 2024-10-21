@@ -1,13 +1,15 @@
 use flecs_ecs::prelude::*;
 use nanoserde::{DeJson, SerJson};
 
-use crate::{persist::Persister, util::pos::Pos, EguiContext};
+use crate::{
+    persist::{PersistExtension, PersistTagExtension, Persister},
+    util::pos::Pos,
+    EguiContext,
+};
 
 #[derive(Component, Debug, DeJson, SerJson, Default)]
 #[meta]
-pub struct Player {
-    filler: u32,
-}
+pub struct Player {}
 
 #[derive(Component, Debug, DeJson, SerJson)]
 #[meta]
@@ -34,19 +36,10 @@ pub struct GameComponents {}
 impl Module for GameComponents {
     fn module(world: &World) {
         world.module::<GameComponents>("GameComponents");
-        world.component::<Pos>().meta().set(Persister::new::<Pos>());
-        world
-            .component::<Player>()
-            .meta()
-            .set(Persister::new::<Player>());
-        world
-            .component::<Health>()
-            .meta()
-            .set(Persister::new::<Health>());
-        world
-            .component::<Unit>()
-            .meta()
-            .set(Persister::new::<Unit>());
+        world.component::<Pos>().meta().persist();
+        world.component::<Player>().meta().persist();
+        world.component::<Health>().meta().persist();
+        world.component::<Unit>().meta().persist();
         world.component::<MessageLog>();
         world.component::<EguiContext>();
     }
