@@ -1,5 +1,5 @@
 use anyhow::Result;
-use flecs::pipeline::{OnLoad, OnStore};
+use flecs::pipeline::{OnLoad, OnStore, PreStore};
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
 use std::collections::HashMap;
@@ -68,6 +68,7 @@ impl Module for SpriteSystems {
             });
         w.system::<(&Pos, &mut DrawPos)>()
             .with::<Unit>()
+            .kind::<PreStore>()
             .each(move |(pos, dpos)| {
                 dpos.x = 32. * pos.x as f32;
                 dpos.y = 32. * pos.y as f32;

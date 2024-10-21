@@ -51,7 +51,7 @@ async fn create_world() -> World {
 
     let world = World::new();
 
-    world.component::<Persister>();
+    let c: Component<'_, Persister> = world.component::<Persister>();
 
     world.import::<SpriteComponents>();
     world.import::<GameComponents>();
@@ -153,13 +153,9 @@ async fn main() {
         }
         if is_key_pressed(KeyCode::F9) {
             if let Some(ref json) = backup {
-                println!("Reloading world.");
                 let new_world = create_world().await;
-                println!("Created world.");
                 let ds = Vec::deserialize_json(json).unwrap();
-                println!("DeJsoned.");
                 persist::deserialize_world(&new_world, &ds);
-                println!("World deserialized.");
                 world = new_world;
                 println!("World reloaded!");
             }
@@ -196,10 +192,7 @@ mod test {
     use flecs_ecs::prelude::*;
     use json::{FromJsonDesc, WorldToJsonDesc};
 
-    use crate::persist::Persister;
-
-    #[derive(Component)]
-    pub struct Persist {}
+    use crate::persist::{Persist, Persister};
 
     #[derive(Component)]
     #[meta]
@@ -358,7 +351,7 @@ mod test {
         }
         let world = World::new();
         world.component::<Thing>();
-        world.component::<crate::Persist>();
+        world.component::<Persist>();
         world.component::<Pos>().meta().add::<Persist>();
         world
             .entity_named("thing")
@@ -369,7 +362,7 @@ mod test {
 
         let world2 = World::new();
         world2.component::<Thing>();
-        world2.component::<crate::Persist>();
+        world2.component::<Persist>();
         world2.component::<Pos>().meta().add::<Persist>();
         world2.from_json_world(&json, None);
         // fails, cause Thing is dropped without having the correct value
@@ -400,7 +393,7 @@ mod test {
 
         let world = World::new();
         world.component::<Thing>();
-        world.component::<crate::Persist>();
+        world.component::<Persist>();
         world.component::<Pos>().meta().add::<Persist>();
         world.component::<Health>().meta().add::<Persist>();
         world
@@ -412,7 +405,7 @@ mod test {
         let query = world
             .query::<()>()
             .with_name("$comp")
-            .with::<crate::Persist>()
+            .with::<Persist>()
             .set_src_name("$comp")
             .build();
 
@@ -432,7 +425,7 @@ mod test {
 
         let world2 = World::new();
         world2.component::<Thing>();
-        world2.component::<crate::Persist>();
+        world2.component::<Persist>();
         world2.component::<Pos>().meta().add::<Persist>();
         world2.component::<Health>().meta().add::<Persist>();
         world2.from_json_world(&json, None);
@@ -467,7 +460,7 @@ mod test {
 
         let world = World::new();
         let bad_comp = world.component::<Thing>();
-        world.component::<crate::Persist>();
+        world.component::<Persist>();
         world.component::<Pos>().meta().add::<Persist>();
         world.component::<Health>().meta().add::<Persist>();
         let e = world
@@ -480,7 +473,7 @@ mod test {
         println!("{}", json);
 
         let world2 = World::new();
-        world2.component::<crate::Persist>();
+        world2.component::<Persist>();
         world2.component::<Health>().meta().add::<Persist>();
         world2.component::<Pos>().meta().add::<Persist>();
         let e = world2.entity().from_json(&json);
