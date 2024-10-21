@@ -4,13 +4,6 @@ use flecs::meta::TypeSerializer;
 use flecs_ecs::prelude::*;
 use nanoserde::{DeJson, SerJson};
 
-// TODO
-// [x] Pairs
-// [x] extension function
-// [x] Persister with zero sized types
-// [x] readd Persist marker
-// [ ] update tests
-
 #[derive(Component)]
 pub struct Persist {}
 
@@ -60,16 +53,12 @@ impl Persister {
         };
 
         let second_ser = |ev: EntityView, first: Entity| {
-	    println!("Second Ser running");
-	    println!("First  {:?}", first);
-	    println!("Second {:?}", std::any::type_name::<T>());
-            let r = ev.get_ref_second::<T>(first).get(|t| t.serialize_json());
-	    println!("Second Ser done");
-	    r
+            //println!("First  {:?}", first);
+            //println!("Second {:?}", std::any::type_name::<T>());
+            ev.get_ref_second::<T>(first).get(|t| t.serialize_json())
         };
 
         let second_deser = |ev: EntityView, first: Entity, s: &str| {
-	    println!("Second DeSer running");
             ev.set_second(first, T::deserialize_json(s).unwrap());
         };
 
@@ -86,7 +75,7 @@ pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
     let query = world
         .query::<()>()
         .with_name("$comp")
-        .with::<Persister>()
+        .with::<Persist>()
         .set_src_name("$comp")
         .build();
     let mut es = HashSet::new(); // want to have all entities only once
@@ -112,13 +101,13 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
         e.set_name(&s.name);
     }
 
-    println!("Looking up tags");
+    //println!("Looking up tags");
     for tag in &s.tags {
         let ev = world.lookup(&tag);
         e.add_id(ev.id());
     }
 
-    println!("Looking up components");
+    //println!("Looking up components");
     for comp in &s.components {
         dbg!(comp);
         let comp_e = world.try_lookup(&comp.name).unwrap();
@@ -141,7 +130,7 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
         }
     }
 
-    println!("Done here.");
+    //println!("Done here.");
     e
 }
 
@@ -154,10 +143,9 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
         if comp.is_entity() {
             let ev = comp.entity_view();
             let name = ev.path().unwrap();
-            println!("comp: {}", name);
+            // println!("comp: {}", name);
             if ev.has::<Persist>() {
-                println!("[{:?}]", ev.archetype());
-                if ev.has::<TypeSerializer>() {
+                if comp.type_id() != 0 { // not a tag
                     let json = ev.get::<&Persister>(|p| (p.serializer)(e));
                     components.push((name, json).into());
                 } else {
@@ -165,7 +153,7 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
                 }
             }
         } else if comp.is_pair() {
-            println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
+            // println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
             let rel = comp.first_id();
             let target = comp.second_id();
             if rel.has::<Persist>() {
@@ -398,8 +386,12 @@ mod test {
             .add_first::<SomeRel>(rel_target)
             .add::<SomeTag>();
 
-	dbg!(SomeRel::id(&world));
-	dbg!(e.get_ref_second::<Transparent>(SomeRel::id(&world)).get(|t| t.stuff));
-	dbg!(e.get_ref_second::<Transparent>(SomeRel::get_id(&world)).get(|t| t.stuff));
+        dbg!(SomeRel::id(&world));
+        dbg!(e
+            .get_ref_second::<Transparent>(SomeRel::id(&world))
+            .get(|t| t.stuff));
+        dbg!(e
+            .get_ref_second::<Transparent>(SomeRel::get_id(&world))
+            .get(|t| t.stuff));
     }
 }

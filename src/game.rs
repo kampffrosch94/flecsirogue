@@ -25,7 +25,7 @@ pub struct Health {
     pub current: i32,
 }
 
-#[derive(Component, Default)]
+#[derive(Component, Default, DeJson, SerJson)]
 pub struct MessageLog {
     pub messages: Vec<String>,
 }
@@ -40,7 +40,7 @@ impl Module for GameComponents {
         world.component::<Player>().meta().persist();
         world.component::<Health>().meta().persist();
         world.component::<Unit>().meta().persist();
-        world.component::<MessageLog>();
+        world.component::<MessageLog>().persist();
         world.component::<EguiContext>();
     }
 }
