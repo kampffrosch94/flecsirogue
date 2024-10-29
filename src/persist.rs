@@ -145,7 +145,8 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             let name = ev.path().unwrap();
             // println!("comp: {}", name);
             if ev.has::<Persist>() {
-                if comp.type_id() != 0 { // not a tag
+                if comp.type_id() != 0 {
+                    // not a tag
                     let json = ev.get::<&Persister>(|p| (p.serializer)(e));
                     components.push((name, json).into());
                 } else {

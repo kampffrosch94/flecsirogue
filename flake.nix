@@ -63,9 +63,6 @@
             # gl
             libGL
 
-            # wayland
-            # wayland
-
             # extra tooling
             tracy # profiler, call with ~Tracy~
             ldtk # level editor
@@ -82,7 +79,6 @@
               libxkbcommon # keyboard
               xorg.libX11
               xorg.libXi 
-              #wayland
             ];
           env.LIBCLANG_PATH = "${pkgs.llvmPackages.clang-unwrapped.lib}/lib/libclang.so";
         };

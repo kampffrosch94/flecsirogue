@@ -168,7 +168,7 @@ async fn main() {
             let wrapper = EguiContext {
                 // UNSAFE: we extend the liftetime to 'static so that
                 // we can store the reference in a singleton
-                // do not forgot to remove it before the egui context goes out of scope
+                // do not forget to remove it before the egui context goes out of scope
                 ctx: unsafe { std::mem::transmute(egui_ctx) },
             };
             world.set(wrapper);

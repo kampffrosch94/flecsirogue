@@ -6,7 +6,8 @@ use std::collections::HashMap;
 
 use crate::game::Unit;
 use crate::util::pos::Pos;
-use crate::{FloorSprite, Player, Visible, WallSprite};
+use crate::util::vec2f::Vec2f;
+use crate::{EguiContext, FloorSprite, Player, Visible, WallSprite};
 
 #[derive(Default, Component)]
 pub struct TextureStore {
@@ -79,6 +80,29 @@ impl Module for SpriteSystems {
             .kind::<OnStore>()
             .each(move |(sprite, dp)| {
                 draw_texture_ex(&sprite.texture, dp.x, dp.y, WHITE, sprite.params.clone());
+            });
+
+        w.system_named::<(&EguiContext, &DrawPos, &Unit)>("HoverUnitSystem")
+            .term_at(0)
+            .singleton()
+            .with::<Visible>()
+            .each(|(egui, dp, unit)| {
+                let mp = Vec2f::from(mouse_position());
+                let ordered = |a, b, c| (a <= b) && (b < c);
+                let mouse_hovered =
+                    ordered(dp.x, mp.x, dp.x + 32.0) && ordered(dp.y, mp.y, dp.y + 32.0);
+                if mouse_hovered {
+                    egui::Area::new(egui::Id::new("hover_unit_area"))
+                        .fixed_pos(egui::pos2(dp.x , dp.y + 20.0))
+                        .show(egui.ctx, |ui| {
+                            egui::Frame::none()
+                                .fill(egui::Color32::BLACK)
+                                .show(ui, |ui| {
+                                    ui.label("Name:");
+                                    ui.label(&unit.name);
+                                });
+                        });
+                }
             });
 
         // TODO this should probably just be one entity that gets referenced from children
