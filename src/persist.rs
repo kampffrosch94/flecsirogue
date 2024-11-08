@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use flecs::meta::TypeSerializer;
 use flecs_ecs::prelude::*;
 use nanoserde::{DeJson, SerJson};
 

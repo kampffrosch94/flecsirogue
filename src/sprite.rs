@@ -4,6 +4,7 @@ use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
 use std::collections::HashMap;
 
+use crate::camera::CameraWrapper;
 use crate::game::Unit;
 use crate::util::pos::Pos;
 use crate::util::vec2f::Vec2f;
@@ -36,6 +37,12 @@ impl TextureStore {
 pub struct DrawPos {
     pub x: f32,
     pub y: f32,
+}
+
+impl Into<Vec2> for &DrawPos {
+    fn into(self) -> Vec2 {
+        Vec2{ x: self.x, y: self.y }
+    }
 }
 
 #[derive(Component)]
@@ -82,18 +89,21 @@ impl Module for SpriteSystems {
                 draw_texture_ex(&sprite.texture, dp.x, dp.y, WHITE, sprite.params.clone());
             });
 
-        w.system_named::<(&EguiContext, &DrawPos, &Unit)>("HoverUnitSystem")
+        w.system_named::<(&EguiContext, &CameraWrapper, &DrawPos, &Unit)>("HoverUnitSystem")
             .term_at(0)
             .singleton()
+            .term_at(1)
+            .singleton()
             .with::<Visible>()
-            .each(|(egui, dp, unit)| {
-                let mp = Vec2f::from(mouse_position());
+            .each(|(egui, camera, dp, unit)| {
+                let mp = camera.screen_to_world(Vec2f::from(mouse_position()));
                 let ordered = |a, b, c| (a <= b) && (b < c);
                 let mouse_hovered =
                     ordered(dp.x, mp.x, dp.x + 32.0) && ordered(dp.y, mp.y, dp.y + 32.0);
                 if mouse_hovered {
+		    let label_pos = camera.world_to_screen(dp) + Vec2f{x: 10.,y:20.};
                     egui::Area::new(egui::Id::new("hover_unit_area"))
-                        .fixed_pos(egui::pos2(dp.x , dp.y + 20.0))
+                        .fixed_pos(egui::pos2(label_pos.x, label_pos.y))
                         .show(egui.ctx, |ui| {
                             egui::Frame::none()
                                 .fill(egui::Color32::BLACK)
