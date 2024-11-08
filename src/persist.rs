@@ -89,7 +89,9 @@ where
 
 pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
     let query = world
-        .query::<()>()
+        .query_named::<()>("Serialize World Query")
+        .expr("!ChildOf(self|up, flecs)")
+        .without_name("flecs.meta.member") // not sure how access this via type, since its a C type
         .with_name("$comp")
         .or()
         .with_first_id(*flecs::Wildcard, "$comp")
@@ -97,6 +99,7 @@ pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
         .with_second_id("$comp", *flecs::Wildcard)
         .with::<Persist>()
         .set_src_name("$comp")
+        .set_cached()
         .build();
     let mut es = HashSet::new(); // want to have all entities only once
     query.each_entity(|e, _| {
@@ -463,7 +466,7 @@ mod test {
     }
 
     #[test]
-    #[ignore = "TODO"]
+    #[ignore = "Not yet implemented"]
     fn persist_rel_entity_entity() {
         // TODO
     }
