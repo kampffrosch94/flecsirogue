@@ -63,6 +63,10 @@ pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
     let query = world
         .query::<()>()
         .with_name("$comp")
+        .or()
+        .with_first_id(*flecs::Wildcard, "$comp")
+        .or()
+        .with_second_id("$comp", *flecs::Wildcard)
         .with::<Persist>()
         .set_src_name("$comp")
         .build();
@@ -78,7 +82,6 @@ pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
 
 pub fn deserialize_world(world: &World, ses: &Vec<SerializedEntity>) {
     for se in ses.iter() {
-        dbg!(se);
         deserialize_entity(world, se);
     }
 }
@@ -103,19 +106,28 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
         comp_e.get::<&Persister>(|p| (p.deserializer)(e, *type_id, &comp.value));
     }
 
-    for (rel, target, kind) in &s.pairs {
+    for (rel_name, target_name, kind) in &s.pairs {
         match kind {
-            SerializedTarget::Entity(te) => {
+            SerializedPair::Entity(te) => {
                 let target = world.make_alive(*te);
-                let rel = world.lookup(rel);
+                let rel = world.lookup(rel_name);
                 let pair = ecs_pair(*rel.id(), *target.id());
                 e.add_id(pair);
             }
-            SerializedTarget::Component(json) => {
-                let rel = world.lookup(rel);
-                let target = world.lookup(&target);
+            SerializedPair::TagComponent(json) => {
+                let rel = world.lookup(rel_name);
+                let target = world.lookup(&target_name);
                 let pair = ecs_pair(*rel.id(), *target.id());
                 target.get::<&Persister>(|p| (p.deserializer)(e, pair, json));
+            }
+            SerializedPair::ComponentEntity(json, te) => {
+                let rel = world.lookup(rel_name);
+                let target = world.make_alive(*te);
+                if !target_name.is_empty() {
+                    target.set_name(target_name);
+                }
+                let pair = ecs_pair(*rel.id(), *target.id());
+                rel.get::<&Persister>(|p| (p.deserializer)(e, pair, json));
             }
         }
     }
@@ -129,7 +141,9 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
     let mut pairs = Vec::new();
     let mut tags = Vec::new();
 
+    println!("{e}");
     e.each_component(|comp| {
+        println!("Comp: {:?}", &comp);
         if comp.is_entity() {
             let ev = comp.entity_view();
             let name = ev.path().unwrap();
@@ -144,19 +158,33 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
                 }
             }
         } else if comp.is_pair() {
-            // println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
+            println!(
+                "Pair {} + {}",
+                comp.first_id().name(),
+                comp.second_id().name()
+            );
             let rel = comp.first_id();
             let target = comp.second_id();
-	    let pair = ecs_pair(*rel.id(), *target.id());
+            let pair = ecs_pair(*rel.id(), *target.id());
             if rel.has::<Persist>() {
-                if target.has::<flecs_ecs::core::flecs::Component>() {
+                if rel.id_view().type_id() != 0 {
+                    assert!(
+                        !target.has::<flecs_ecs::core::flecs::Component>(),
+                        "Only either first or second can be a data component"
+                    );
+                    let json = rel
+                        .try_get::<&Persister>(|p| (p.serializer)(e, pair))
+                        .expect("Component should have a Persister registered");
+                    let s = SerializedPair::ComponentEntity(json, *target.id());
+                    pairs.push((rel.path().unwrap(), target.name(), s));
+                } else if target.has::<flecs_ecs::core::flecs::Component>() {
                     let json = target
                         .try_get::<&Persister>(|p| (p.serializer)(e, pair))
                         .expect("Component should have a Persister registered");
-                    let s = SerializedTarget::Component(json);
+                    let s = SerializedPair::TagComponent(json);
                     pairs.push((rel.path().unwrap(), target.path().unwrap(), s));
                 } else {
-                    let s = SerializedTarget::Entity(*target.id());
+                    let s = SerializedPair::Entity(*target.id());
                     pairs.push((rel.path().unwrap(), target.name(), s));
                 }
             }
@@ -192,8 +220,9 @@ impl From<(String, String)> for SerializedComponent {
 }
 
 #[derive(Debug, SerJson, DeJson, PartialEq)]
-enum SerializedTarget {
-    Component(String),
+enum SerializedPair {
+    ComponentEntity(String, u64),
+    TagComponent(String),
     Entity(u64),
 }
 
@@ -202,7 +231,7 @@ pub struct SerializedEntity {
     id: u64,
     name: String,
     components: Vec<SerializedComponent>,
-    pairs: Vec<(String, String, SerializedTarget)>,
+    pairs: Vec<(String, String, SerializedPair)>,
     tags: Vec<String>,
 }
 
@@ -270,7 +299,7 @@ mod test {
         println!("------------");
         let serialized = serialize_entity(e);
         assert_eq!(
-            SerializedTarget::Component("{\"stuff\":52}".into()),
+            SerializedPair::TagComponent("{\"stuff\":52}".into()),
             serialized.pairs[0].2
         );
         println!("------------");
@@ -329,19 +358,6 @@ mod test {
     }
 
     #[test]
-    fn nested_minimal() {
-        let world = World::new();
-        world.component::<Persist>();
-        world.component::<Health>().meta();
-        world.component::<Unit>().meta();
-        let e = world.entity().set(Unit {
-            name: "VillagerA".into(),
-            health: Health { max: 5, current: 3 },
-        });
-        println!("{}", e.to_json(None));
-    }
-
-    #[test]
     fn persister_test() {
         let world = World::new();
         world.component::<Persist>();
@@ -389,6 +405,7 @@ mod test {
     #[test]
     fn persist_rel_component_entity() {
         #[derive(Debug, SerJson, DeJson, Component)]
+        #[meta]
         struct Amount {
             amount: i32,
         }
@@ -396,19 +413,21 @@ mod test {
         let world = World::new();
         world.component::<Persist>();
         world.component::<Persister>();
-        world.component::<Amount>().persist();
+        world.component::<Amount>().meta().persist();
 
         let player = world.entity_named("Player");
         let item = world.entity_named("Some Item");
         player.set_first(Amount { amount: 1 }, item);
+        println!("{}", player.to_json(None));
 
         let s = serialize_world(&world).serialize_json();
         println!("{s}");
+        assert_ne!("[]", s);
         let ds = Vec::deserialize_json(&s).unwrap();
         let world2 = World::new();
         world2.component::<Persist>();
         world2.component::<Persister>();
-        world2.component::<Amount>().persist();
+        world2.component::<Amount>().meta().persist();
         deserialize_world(&world2, &ds);
         println!("Deserialized");
         let player = player.id().id_view(&world2).entity_view();
@@ -419,6 +438,12 @@ mod test {
     #[test]
     #[ignore = "TODO"]
     fn persist_rel_entity_entity() {
+        // TODO
+    }
+
+    #[test]
+    #[ignore = "TODO"]
+    fn persist_without_meta() {
         // TODO
     }
 
