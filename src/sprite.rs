@@ -41,7 +41,10 @@ pub struct DrawPos {
 
 impl Into<Vec2> for &DrawPos {
     fn into(self) -> Vec2 {
-        Vec2{ x: self.x, y: self.y }
+        Vec2 {
+            x: self.x,
+            y: self.y,
+        }
     }
 }
 
@@ -101,7 +104,7 @@ impl Module for SpriteSystems {
                 let mouse_hovered =
                     ordered(dp.x, mp.x, dp.x + 32.0) && ordered(dp.y, mp.y, dp.y + 32.0);
                 if mouse_hovered {
-		    let label_pos = camera.world_to_screen(dp) + Vec2f{x: 10.,y:20.};
+                    let label_pos = camera.world_to_screen(dp) + Vec2f { x: 10., y: 20. };
                     egui::Area::new(egui::Id::new("hover_unit_area"))
                         .fixed_pos(egui::pos2(label_pos.x, label_pos.y))
                         .show(egui.ctx, |ui| {
