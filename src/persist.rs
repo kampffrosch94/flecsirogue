@@ -6,7 +6,7 @@ use nanoserde::{DeJson, SerJson};
 #[derive(Component)]
 pub struct Persist {}
 
-pub trait PersistExtension {
+pub trait PersistExtension<COMP> {
     fn persist(&self) -> EntityView;
 }
 
@@ -23,12 +23,13 @@ where
     }
 }
 
-impl<T> PersistExtension for Component<'_, T>
+impl<T, COMP> PersistExtension<COMP> for Component<'_, T>
 where
-    T: ComponentId + DataComponent + DeJson + SerJson + ComponentType<Struct>,
+    T: CreatePersister<COMP>,
+    COMP: ECSComponentType, // Struct or Enum
 {
     fn persist(&self) -> EntityView {
-        self.set(Persister::new::<T>()).add::<Persist>()
+        self.set(T::create_persister()).add::<Persist>()
     }
 }
 
@@ -38,10 +39,15 @@ pub struct Persister {
     pub deserializer: Box<fn(EntityView, u64, &str)>,
 }
 
-impl Persister {
-    pub fn new<T>() -> Self
-    where
-        T: ComponentId + DataComponent + DeJson + SerJson + ComponentType<Struct>,
+trait CreatePersister<COMP> {
+    fn create_persister() -> Persister;
+}
+
+impl<T> CreatePersister<Struct> for T
+where
+    T: ComponentId + DataComponent + DeJson + SerJson + ComponentType<Struct>,
+{
+    fn create_persister() -> Persister
     {
         let ser = |ev: EntityView, id: u64| {
             let comp: &T = unsafe { &*ev.get_untyped(id).cast() };
@@ -52,12 +58,34 @@ impl Persister {
             ev.set_id(data, id);
         };
 
-        Self {
+        Persister {
             serializer: Box::new(ser),
             deserializer: Box::new(deser),
         }
     }
 }
+
+impl<T> CreatePersister<Enum> for T
+where
+    T: ComponentId + DataComponent + DeJson + SerJson + ComponentType<Enum> + EnumComponentInfo,
+{
+    fn create_persister() -> Persister
+    {
+        let ser = |ev: EntityView, _id: u64| {
+            ev.get::<&T>(|comp| comp.serialize_json())
+        };
+        let deser = |ev: EntityView, _id: u64, s: &str| {
+            let data = T::deserialize_json(s).unwrap();
+            ev.add_enum(data);
+        };
+
+        Persister {
+            serializer: Box::new(ser),
+            deserializer: Box::new(deser),
+        }
+    }
+}
+
 
 pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
     let query = world
@@ -405,7 +433,6 @@ mod test {
     #[test]
     fn persist_rel_component_entity() {
         #[derive(Debug, SerJson, DeJson, Component)]
-        #[meta]
         struct Amount {
             amount: i32,
         }
@@ -413,7 +440,7 @@ mod test {
         let world = World::new();
         world.component::<Persist>();
         world.component::<Persister>();
-        world.component::<Amount>().meta().persist();
+        world.component::<Amount>().persist();
 
         let player = world.entity_named("Player");
         let item = world.entity_named("Some Item");
@@ -427,7 +454,7 @@ mod test {
         let world2 = World::new();
         world2.component::<Persist>();
         world2.component::<Persister>();
-        world2.component::<Amount>().meta().persist();
+        world2.component::<Amount>().persist();
         deserialize_world(&world2, &ds);
         println!("Deserialized");
         let player = player.id().id_view(&world2).entity_view();
@@ -442,14 +469,37 @@ mod test {
     }
 
     #[test]
-    #[ignore = "TODO"]
-    fn persist_without_meta() {
-        // TODO
-    }
-
-    #[test]
-    #[ignore = "TODO"]
     fn persist_enum() {
-        // TODO
+        #[derive(Debug, SerJson, DeJson, Component)]
+	#[repr(C)]
+	#[meta]
+        enum Thing {
+	    Stone,
+	    Rock,
+	    Boulder,
+	    Pebble
+        }
+
+        let world = World::new();
+        world.component::<Persist>();
+        world.component::<Persister>();
+        world.component::<Thing>().meta().persist();
+
+        let player = world.entity_named("Player").add_enum(Thing::Rock);
+
+        let s = serialize_world(&world).serialize_json();
+        println!("{s}");
+        assert_ne!("[]", s);
+        let ds = Vec::deserialize_json(&s).unwrap();
+        let world2 = World::new();
+        world2.component::<Persist>();
+        world2.component::<Persister>();
+        world2.component::<Thing>().persist();
+
+        deserialize_world(&world2, &ds);
+        println!("Deserialized");
+
+        let player = player.id().id_view(&world2).entity_view();
+        assert!(player.has_enum(Thing::Rock));
     }
 }
