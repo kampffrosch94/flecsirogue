@@ -385,4 +385,46 @@ mod test {
             .get_ref_second::<Transparent>(SomeRel::get_id(&world))
             .get(|t| t.stuff));
     }
+
+    #[test]
+    fn persist_rel_component_entity() {
+        #[derive(Debug, SerJson, DeJson, Component)]
+        struct Amount {
+            amount: i32,
+        }
+
+        let world = World::new();
+        world.component::<Persist>();
+        world.component::<Persister>();
+        world.component::<Amount>().persist();
+
+        let player = world.entity_named("Player");
+        let item = world.entity_named("Some Item");
+        player.set_first(Amount { amount: 1 }, item);
+
+        let s = serialize_world(&world).serialize_json();
+        println!("{s}");
+        let ds = Vec::deserialize_json(&s).unwrap();
+        let world2 = World::new();
+        world2.component::<Persist>();
+        world2.component::<Persister>();
+        world2.component::<Amount>().persist();
+        deserialize_world(&world2, &ds);
+        println!("Deserialized");
+        let player = player.id().id_view(&world2).entity_view();
+        let item = world2.entity_named("Some Item");
+        assert_eq!(1, player.get_ref_first::<Amount>(item).get(|i| i.amount));
+    }
+
+    #[test]
+    #[ignore = "TODO"]
+    fn persist_rel_entity_entity() {
+        // TODO
+    }
+
+    #[test]
+    #[ignore = "TODO"]
+    fn persist_enum() {
+        // TODO
+    }
 }
