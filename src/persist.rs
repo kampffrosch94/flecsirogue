@@ -34,11 +34,8 @@ where
 
 #[derive(Component)]
 pub struct Persister {
-    pub serializer: Box<fn(EntityView) -> String>,
-    pub deserializer: Box<fn(EntityView, &str)>,
-    // for relationship values
-    pub second_serializer: Box<fn(EntityView, Entity) -> String>,
-    pub second_deserializer: Box<fn(EntityView, Entity, &str)>,
+    pub serializer: Box<fn(EntityView, u64) -> String>,
+    pub deserializer: Box<fn(EntityView, u64, &str)>,
 }
 
 impl Persister {
@@ -46,26 +43,18 @@ impl Persister {
     where
         T: ComponentId + DataComponent + DeJson + SerJson + ComponentType<Struct>,
     {
-        let ser = |ev: EntityView| ev.get::<&T>(|t| t.serialize_json());
-        let deser = |ev: EntityView, s: &str| {
-            ev.set(T::deserialize_json(s).unwrap());
+        let ser = |ev: EntityView, id: u64| {
+            let comp: &T = unsafe { &*ev.get_untyped(id).cast() };
+            comp.serialize_json()
         };
-
-        let second_ser = |ev: EntityView, first: Entity| {
-            //println!("First  {:?}", first);
-            //println!("Second {:?}", std::any::type_name::<T>());
-            ev.get_ref_second::<T>(first).get(|t| t.serialize_json())
-        };
-
-        let second_deser = |ev: EntityView, first: Entity, s: &str| {
-            ev.set_second(first, T::deserialize_json(s).unwrap());
+        let deser = |ev: EntityView, id: u64, s: &str| {
+            let data = T::deserialize_json(s).unwrap();
+            ev.set_id(data, id);
         };
 
         Self {
             serializer: Box::new(ser),
             deserializer: Box::new(deser),
-            second_serializer: Box::new(second_ser),
-            second_deserializer: Box::new(second_deser),
         }
     }
 }
@@ -110,7 +99,8 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
     for comp in &s.components {
         dbg!(comp);
         let comp_e = world.try_lookup(&comp.name).unwrap();
-        comp_e.get::<&Persister>(|p| (p.deserializer)(e, &comp.value));
+        let type_id = comp_e.id_view().type_id().id();
+        comp_e.get::<&Persister>(|p| (p.deserializer)(e, *type_id, &comp.value));
     }
 
     for (rel, target, kind) in &s.pairs {
@@ -124,7 +114,8 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
             SerializedTarget::Component(json) => {
                 let rel = world.lookup(rel);
                 let target = world.lookup(&target);
-                target.get::<&Persister>(|p| (p.second_deserializer)(e, rel.id(), json));
+                let pair = ecs_pair(*rel.id(), *target.id());
+                target.get::<&Persister>(|p| (p.deserializer)(e, pair, json));
             }
         }
     }
@@ -146,7 +137,7 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             if ev.has::<Persist>() {
                 if comp.type_id() != 0 {
                     // not a tag
-                    let json = ev.get::<&Persister>(|p| (p.serializer)(e));
+                    let json = ev.get::<&Persister>(|p| (p.serializer)(e, *comp.type_id().id()));
                     components.push((name, json).into());
                 } else {
                     tags.push(ev.path().unwrap());
@@ -156,14 +147,14 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
             // println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
             let rel = comp.first_id();
             let target = comp.second_id();
+	    let pair = ecs_pair(*rel.id(), *target.id());
             if rel.has::<Persist>() {
                 if target.has::<flecs_ecs::core::flecs::Component>() {
                     let json = target
-                        .try_get::<&Persister>(|p| (p.second_serializer)(e, rel.id()))
+                        .try_get::<&Persister>(|p| (p.serializer)(e, pair))
                         .expect("Component should have a Persister registered");
                     let s = SerializedTarget::Component(json);
                     pairs.push((rel.path().unwrap(), target.path().unwrap(), s));
-                    //println!("[{:?}]", ev2.archetype());
                 } else {
                     let s = SerializedTarget::Entity(*target.id());
                     pairs.push((rel.path().unwrap(), target.name(), s));
