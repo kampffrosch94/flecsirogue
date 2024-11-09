@@ -1,6 +1,4 @@
 #![allow(unused)]
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     ops::{Add, Index, IndexMut, Mul},
@@ -9,7 +7,6 @@ use std::{
 use crate::util::pos::Pos;
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Grid<T> {
     pub data: Vec<T>,
     pub width: i32,

@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
-use crate::util::flecs_extension::KfWorldExtensions;
 use flecs_ecs::prelude::*;
 use nanoserde::{DeJson, SerJson};
+
+use crate::util::flecs_extension::KfWorldExtensions;
 
 #[derive(Component)]
 pub struct PersistModule {}
@@ -275,11 +276,9 @@ pub struct SerializedEntity {
 
 #[cfg(test)]
 mod test {
-    #![allow(unused)]
-    use crate::{Health, Unit};
+    use crate::game::{Health, Unit};
 
     use super::*;
-    use flecs_ecs::prelude::*;
 
     #[derive(Component, Debug, SerJson, DeJson)]
     pub struct Opaque {

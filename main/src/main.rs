@@ -1,20 +1,18 @@
 mod camera;
 mod game;
 mod input;
-mod persist;
 mod sprite;
 mod tilemap;
-mod util;
-mod vendored;
 
-use game::*;
+use components::game::{EguiContext, GameComponents, Health, Player, Unit};
+use crate::game::GameSystems;
 use input::InputSystems;
 use nanoserde::{DeJson, SerJson};
-use persist::PersistModule;
+use components::persist::PersistModule;
 use sprite::*;
 use tilemap::*;
-use util::pos::Pos;
-use vendored::*;
+use components::util::pos::Pos;
+use components::vendored::*;
 
 use camera::{CameraComponents, CameraSystems};
 
@@ -149,14 +147,14 @@ async fn main() {
         clear_background(BLACK);
 
         if is_key_pressed(KeyCode::F5) {
-            let s = persist::serialize_world(&world).serialize_json();
+            let s = components::persist::serialize_world(&world).serialize_json();
             backup = Some(s);
         }
         if is_key_pressed(KeyCode::F9) {
             if let Some(ref json) = backup {
                 let new_world = create_world().await;
                 let ds = Vec::deserialize_json(json).unwrap();
-                persist::deserialize_world(&new_world, &ds);
+                components::persist::deserialize_world(&new_world, &ds);
                 world = new_world;
                 println!("World reloaded!");
             }
@@ -182,10 +180,6 @@ async fn main() {
     }
 }
 
-#[derive(Component)]
-pub struct EguiContext {
-    pub ctx: &'static egui::Context,
-}
 
 #[cfg(test)]
 mod test {

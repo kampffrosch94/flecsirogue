@@ -1,10 +1,12 @@
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
 
-use crate::{
-    util::{flecs_extension::QueryExtKf, pos::Pos},
-    DamageEvent, DamageKind, MessageLog, Origin, Player, Target, TileKind, TileMap,
+use components::util::{flecs_extension::QueryExtKf, pos::Pos};
+use components::game::{
+    DamageEvent, DamageKind, MessageLog, Origin, Player, Target,
 };
+
+use crate::{TileKind, TileMap};
 
 #[derive(Component)]
 pub struct InputSystems {}

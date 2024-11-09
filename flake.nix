@@ -31,7 +31,7 @@
         default = (pkgs.mkShell.override { stdenv = pkgs.useMoldLinker pkgs.clangStdenv; }) {
           packages = with pkgs; [
             # rust stuff
-            (with pkgs.fenix; with stable; combine [
+            (with pkgs.fenix; with complete; combine [
               cargo
               clippy
               rust-src
