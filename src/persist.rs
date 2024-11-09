@@ -1,7 +1,19 @@
 use std::collections::HashSet;
 
+use crate::util::flecs_extension::KfWorldExtensions;
 use flecs_ecs::prelude::*;
 use nanoserde::{DeJson, SerJson};
+
+#[derive(Component)]
+pub struct PersistModule {}
+
+impl Module for PersistModule {
+    fn module(world: &World) {
+        //world.module::<PersistModule>("persist");
+        world.component_kf::<Persist>();
+        world.component_kf::<Persister>();
+    }
+}
 
 #[derive(Component)]
 pub struct Persist {}
@@ -47,8 +59,7 @@ impl<T> CreatePersister<Struct> for T
 where
     T: ComponentId + DataComponent + DeJson + SerJson + ComponentType<Struct>,
 {
-    fn create_persister() -> Persister
-    {
+    fn create_persister() -> Persister {
         let ser = |ev: EntityView, id: u64| {
             let comp: &T = unsafe { &*ev.get_untyped(id).cast() };
             comp.serialize_json()
@@ -69,11 +80,8 @@ impl<T> CreatePersister<Enum> for T
 where
     T: ComponentId + DataComponent + DeJson + SerJson + ComponentType<Enum> + EnumComponentInfo,
 {
-    fn create_persister() -> Persister
-    {
-        let ser = |ev: EntityView, _id: u64| {
-            ev.get::<&T>(|comp| comp.serialize_json())
-        };
+    fn create_persister() -> Persister {
+        let ser = |ev: EntityView, _id: u64| ev.get::<&T>(|comp| comp.serialize_json());
         let deser = |ev: EntityView, _id: u64, s: &str| {
             let data = T::deserialize_json(s).unwrap();
             ev.add_enum(data);
@@ -85,7 +93,6 @@ where
         }
     }
 }
-
 
 pub fn serialize_world(world: &World) -> Vec<SerializedEntity> {
     let query = world
@@ -396,10 +403,12 @@ mod test {
         world.component::<Health>().meta().persist();
 
         world.component::<Unit>().meta().persist();
-        let e = world.entity().set(Unit {
-            name: "VillagerA".into(),
-            health: Health { max: 5, current: 3 },
-        });
+        let e = world
+            .entity()
+            .set(Unit {
+                name: "VillagerA".into(),
+            })
+            .set(Health { max: 5, current: 3 });
         let s = serialize_world(&world).serialize_json();
         let ds = Vec::deserialize_json(&s).unwrap();
         let world2 = World::new();
@@ -468,13 +477,13 @@ mod test {
     #[test]
     fn persist_enum() {
         #[derive(Debug, SerJson, DeJson, Component)]
-	#[repr(C)]
-	#[meta]
+        #[repr(C)]
+        #[meta]
         enum Thing {
-	    Stone,
-	    Rock,
-	    Boulder,
-	    Pebble
+            Stone,
+            Rock,
+            Boulder,
+            Pebble,
         }
 
         let world = World::new();

@@ -1,4 +1,4 @@
-use crate::util::vec2f::Vec2f;
+use crate::util::{flecs_extension::KfWorldExtensions, vec2f::Vec2f};
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
 use tween::{Linear, Tweener};
@@ -111,7 +111,7 @@ pub struct CameraComponents {}
 
 impl Module for CameraComponents {
     fn module(world: &World) {
-        world.component::<CameraWrapper>();
+        world.component_kf::<CameraWrapper>();
     }
 }
 
@@ -120,6 +120,8 @@ pub struct CameraSystems {}
 
 impl Module for CameraSystems {
     fn module(world: &World) {
+        world.import::<CameraComponents>();
+
         world.set(CameraWrapper::new());
         let mut last_mouse_position = mouse_position();
         world

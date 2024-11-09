@@ -4,11 +4,14 @@ use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
 use std::collections::HashMap;
 
-use crate::camera::CameraWrapper;
+use crate::camera::{CameraComponents, CameraWrapper};
 use crate::game::Unit;
+use crate::util::flecs_extension::KfWorldExtensions;
 use crate::util::pos::Pos;
 use crate::util::vec2f::Vec2f;
-use crate::{EguiContext, FloorSprite, Player, Visible, WallSprite};
+use crate::{
+    EguiContext, FloorSprite, GameComponents, Player, TilemapComponents, Visible, WallSprite,
+};
 
 #[derive(Default, Component)]
 pub struct TextureStore {
@@ -59,11 +62,11 @@ pub struct SpriteComponents {}
 
 impl Module for SpriteComponents {
     fn module(world: &World) {
-        world.component::<DrawPos>().meta();
-        world.component::<Sprite>();
-        world.component::<TextureStore>();
-        world.component::<FloorSprite>();
-        world.component::<WallSprite>();
+        world.component_kf::<DrawPos>().meta();
+        world.component_kf::<Sprite>();
+        world.component_kf::<TextureStore>();
+        world.component_kf::<FloorSprite>();
+        world.component_kf::<WallSprite>();
     }
 }
 
@@ -72,6 +75,11 @@ pub struct SpriteSystems {}
 
 impl Module for SpriteSystems {
     fn module(w: &World) {
+        w.import::<SpriteComponents>();
+        w.import::<GameComponents>();
+        w.import::<TilemapComponents>();
+        w.import::<CameraComponents>();
+
         w.system::<&Pos>()
             .without::<DrawPos>()
             .each_entity(|e, _pos| {

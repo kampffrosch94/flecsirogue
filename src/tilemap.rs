@@ -3,7 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::{game::Player, grids::Grid, Sprite};
+use crate::{game::Player, grids::Grid, util::flecs_extension::KfWorldExtensions, Sprite};
 use ::rand::{rngs::StdRng, SeedableRng};
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
@@ -99,8 +99,8 @@ pub struct TilemapComponents {}
 
 impl Module for TilemapComponents {
     fn module(world: &flecs_ecs::prelude::World) {
-        world.component::<Visible>();
-        world.component::<TileMap>();
+        world.component_kf::<Visible>();
+        world.component_kf::<TileMap>();
     }
 }
 
@@ -109,6 +109,7 @@ pub struct TilemapSystems {}
 
 impl Module for TilemapSystems {
     fn module(world: &flecs_ecs::prelude::World) {
+        world.import::<TilemapComponents>();
         // TODO move to init function
         world.set(TileMap::new());
 

@@ -10,7 +10,7 @@ mod vendored;
 use game::*;
 use input::InputSystems;
 use nanoserde::{DeJson, SerJson};
-use persist::{Persist, Persister};
+use persist::PersistModule;
 use sprite::*;
 use tilemap::*;
 use util::pos::Pos;
@@ -51,13 +51,13 @@ async fn create_world() -> World {
 
     let world = World::new();
 
-    world.component::<Persist>();
-    world.component::<Persister>();
+    world.import::<PersistModule>();
 
+    // world.import::<SpriteComponents>();
     world.import::<SpriteComponents>();
     world.import::<GameComponents>();
-    world.import::<CameraComponents>();
     world.import::<TilemapComponents>();
+    world.import::<CameraComponents>();
 
     world.import::<SpriteSystems>();
     world.import::<GameSystems>();
@@ -95,8 +95,8 @@ async fn create_world() -> World {
 
     // Creates REST server on default port (27750)
     // TODO need to turn these off before reloading world
-    //world.import::<stats::Stats>(); // stats for explorer
-    //world.set(flecs::rest::Rest::default());
+    world.import::<stats::Stats>(); // stats for explorer
+    world.set(flecs::rest::Rest::default());
 
     return world;
 }
@@ -109,10 +109,10 @@ async fn main() {
         .entity_named("PlayerCharacter")
         .set(Unit {
             name: "Player".into(),
-            health: Health {
-                max: 10,
-                current: 10,
-            },
+        })
+        .set(Health {
+            max: 10,
+            current: 10,
         })
         .add::<Player>();
 
@@ -138,8 +138,8 @@ async fn main() {
             .entity()
             .set(Unit {
                 name: "Goblin".into(),
-                health: Health { max: 3, current: 3 },
             })
+            .set(Health { max: 3, current: 3 })
             .set(free_positions.pop().unwrap());
     }
 
@@ -189,23 +189,7 @@ pub struct EguiContext {
 
 #[cfg(test)]
 mod test {
-    #![allow(unused)]
     use flecs_ecs::prelude::*;
-    use json::{FromJsonDesc, WorldToJsonDesc};
-
-    #[derive(Component)]
-    #[meta]
-    struct Pos {
-        x: i32,
-        y: i32,
-    }
-
-    #[derive(Debug, Component)]
-    #[meta]
-    pub struct Position {
-        pub x: f32,
-        pub y: f32,
-    }
 
     #[test]
     fn goblin_test() {
