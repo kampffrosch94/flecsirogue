@@ -466,12 +466,6 @@ mod test {
     }
 
     #[test]
-    #[ignore = "Not yet implemented"]
-    fn persist_rel_entity_entity() {
-        // TODO
-    }
-
-    #[test]
     fn persist_enum() {
         #[derive(Debug, SerJson, DeJson, Component)]
 	#[repr(C)]
