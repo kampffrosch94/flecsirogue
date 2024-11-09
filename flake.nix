@@ -46,7 +46,7 @@
 
             # necessary to build
             pkg-config # locate C dependencies
-            alsaLib # sound
+            alsa-lib # sound
             libxkbcommon # keyboard
 
             # X
@@ -71,7 +71,7 @@
           LD_LIBRARY_PATH =
             with pkgs;
             lib.makeLibraryPath [
-              alsaLib # sound
+              alsa-lib # sound
               libGL
               libxkbcommon # keyboard
               xorg.libX11
