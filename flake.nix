@@ -49,11 +49,6 @@
             alsaLib # sound
             libxkbcommon # keyboard
 
-            vulkan-tools
-            vulkan-headers
-            vulkan-loader
-            vulkan-validation-layers
-
             # X
             xorg.libX11
             xorg.libXcursor
@@ -69,6 +64,8 @@
             jq # extract stuff from json
             cargo-flamegraph # more profiling :)
             cargo-watch
+            cargo-llvm-lines
+            cargo-machete
           ];
           # stuff we need to run
           LD_LIBRARY_PATH =

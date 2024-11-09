@@ -1,7 +1,7 @@
+use derive_more::Display;
 use flecs::pipeline::{OnValidate, PostUpdate};
 use flecs_ecs::prelude::*;
 use nanoserde::{DeJson, SerJson};
-use derive_more::Display;
 
 use crate::{
     persist::{PersistExtension, PersistModule, PersistTagExtension},
@@ -107,11 +107,12 @@ impl Module for GameSystems {
             .term_singleton(4)
             .each_entity(|e, (ev, kind, t_hp, t_unit, ml)| {
                 println!("Processing {e:?}");
-		let name = &t_unit.name;
-		let amount = &ev.amount;
-		ml.messages.push(format!("{name} takes {amount} {kind} damage."));
-		// TODO not only units should be able to take damage
-		// TODO damage resistance
+                let name = &t_unit.name;
+                let amount = &ev.amount;
+                ml.messages
+                    .push(format!("{name} takes {amount} {kind} damage."));
+                // TODO not only units should be able to take damage
+                // TODO damage resistance
                 t_hp.current -= ev.amount;
             });
 
@@ -122,7 +123,8 @@ impl Module for GameSystems {
             .not()
             .with_enum_wildcard::<DamageKind>()
             .with_first_name::<Target>("$target")
-            .with::<Health>().set_src_name("$target")
+            .with::<Health>()
+            .set_src_name("$target")
             .with_first::<Origin>(*flecs::Any)
             .scope_close()
             .kind::<OnValidate>()
@@ -176,15 +178,25 @@ mod test {
         let enemy = world
             .entity_named("gobbo")
             .set(Health { max: 5, current: 5 })
-            .set(Unit { name: "Goblin McGobbo".into() });
+            .set(Unit {
+                name: "Goblin McGobbo".into(),
+            });
+        let enemy2 = world
+            .entity_named("gobbo 2")
+            .set(Health { max: 5, current: 5 })
+            .set(Unit {
+                name: "Goblina McGobbo".into(),
+            });
         world
             .entity()
             .set(DamageEvent { amount: 2 })
             .add_first::<Target>(enemy)
+            .add_first::<Target>(enemy2)
             .add_first::<Origin>(player)
             .add_enum(DamageKind::Cutting);
 
         world.progress();
         assert_eq!(3, enemy.get::<&Health>(|hp| hp.current));
+        assert_eq!(3, enemy2.get::<&Health>(|hp| hp.current));
     }
 }

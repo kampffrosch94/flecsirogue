@@ -15,8 +15,7 @@ rand = "0.8.5"
 macroquad = "0.4.11"
 # egui integration
 egui-miniquad = {git = "https://github.com/kampffrosch94/egui-miniquad", branch = "miniquad_update"}
-egui = "*"
-itertools = "0.13.0"
+egui = "0.28"
 symmetric-shadowcasting = { git = "https://github.com/nsmryan/shadowcasting.git", version = "0.2.0" }
 nanoserde = "0.1.37"
 

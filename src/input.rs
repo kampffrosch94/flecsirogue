@@ -2,7 +2,8 @@ use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
 
 use crate::{
-    util::pos::Pos, DamageEvent, DamageKind, Health, MessageLog, Player, TileKind, TileMap, Unit,
+    util::{flecs_extension::QueryExtKf, pos::Pos},
+    DamageEvent, DamageKind, Health, MessageLog, Origin, Player, Target, TileKind, TileMap, Unit,
 };
 
 #[derive(Component)]
@@ -13,10 +14,8 @@ impl Module for InputSystems {
         // move player
         world
             .system_named::<(&TileMap, &mut MessageLog, &mut Pos)>("PlayerMovement")
-            .term_at(0)
-            .singleton()
-            .term_at(1)
-            .singleton()
+            .term_singleton(0)
+            .term_singleton(1)
             .with::<Player>()
             .each_entity(|player_ev, (tm, ml, pos)| {
                 if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
@@ -47,17 +46,13 @@ impl Module for InputSystems {
                             *pos = new_pos;
                         }
                         if let Some(other_entity) = maybe_blocker {
-                            let other = other_entity.entity_view(player_ev);
                             player_ev
                                 .world()
                                 .entity()
                                 .set(DamageEvent { amount: 2 })
+                                .add_first::<Origin>(*player_ev)
+                                .add_first::<Target>(*other_entity)
                                 .add_enum(DamageKind::Cutting);
-                            // TODO_remove that
-                            other.get::<(&mut Unit, &mut Health)>(|(unit, health)| {
-                                health.current -= 2;
-                                ml.messages.push(format!("You hit the {}.", unit.name));
-                            });
                         }
                     }
                 }
