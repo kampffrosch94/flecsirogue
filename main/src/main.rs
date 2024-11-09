@@ -37,15 +37,15 @@ async fn create_world() -> World {
     // resources
     let mut store = TextureStore::default();
     store
-        .load_texture("assets/32rogues/rogues.png", "rogues")
+        .load_texture("../assets/32rogues/rogues.png", "rogues")
         .await
         .unwrap();
     store
-        .load_texture("assets/32rogues/tiles.png", "tiles")
+        .load_texture("../assets/32rogues/tiles.png", "tiles")
         .await
         .unwrap();
     store
-        .load_texture("assets/32rogues/monsters.png", "monsters")
+        .load_texture("../assets/32rogues/monsters.png", "monsters")
         .await
         .unwrap();
 

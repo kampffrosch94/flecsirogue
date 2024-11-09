@@ -1,5 +1,5 @@
 [workspace]
-
-members = [
-    "flecsirogue",
+workspace.resolver = "2"
+members = [ "components",
+    "main",
 ]

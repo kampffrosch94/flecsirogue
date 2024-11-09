@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 
 use crate::{
     util::{flecs_extension::QueryExtKf, pos::Pos},
-    DamageEvent, DamageKind, Health, MessageLog, Origin, Player, Target, TileKind, TileMap, Unit,
+    DamageEvent, DamageKind, MessageLog, Origin, Player, Target, TileKind, TileMap,
 };
 
 #[derive(Component)]

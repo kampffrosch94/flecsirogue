@@ -228,6 +228,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "components"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "derive_more",
+ "egui",
+ "egui-miniquad",
+ "flecs_ecs",
+ "macroquad",
+ "mapgen",
+ "nanoserde",
+ "rand",
+ "symmetric-shadowcasting",
+ "tween",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -438,6 +455,7 @@ name = "flecsirogue"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "components",
  "derive_more",
  "egui",
  "egui-miniquad",
