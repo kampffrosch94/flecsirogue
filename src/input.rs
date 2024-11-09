@@ -51,11 +51,7 @@ impl Module for InputSystems {
                             player_ev
                                 .world()
                                 .entity()
-                                .set(DamageEvent {
-                                    origin: *player_ev,
-                                    target: other_entity.clone(),
-                                    amount: 2,
-                                })
+                                .set(DamageEvent { amount: 2 })
                                 .add_enum(DamageKind::Cutting);
                             // TODO_remove that
                             other.get::<(&mut Unit, &mut Health)>(|(unit, health)| {
