@@ -62,8 +62,11 @@ impl Module for GameSystems {
             });
 
         world
-            .system_named::<&DamageEvent>("DamageEvent cleanup")
+            .system_named::<()>("Event cleanup")
             .kind::<PostUpdate>()
+            .with::<DamageEvent>()
+            .or()
+            .with::<PushEvent>()
             .each_entity(|e, _| {
                 println!("Deleting {e:?}");
                 e.destruct();
@@ -119,11 +122,12 @@ mod test {
                 name: "Goblina McGobbo".into(),
             });
 
-        DamageEvent::create(&world, DamageKind::Cutting, 2, *player, &[*enemy, *enemy2]);
+        let ev = DamageEvent::create(&world, DamageKind::Cutting, 2, *player, &[*enemy, *enemy2]);
 
         world.progress();
         assert_eq!(3, enemy.get::<&Health>(|hp| hp.current));
         assert_eq!(3, enemy2.get::<&Health>(|hp| hp.current));
+	assert!(!ev.is_alive());
     }
 
     #[test]
@@ -147,10 +151,11 @@ mod test {
             })
             .set(Pos { x: 0, y: 0 });
 
-        PushEvent::create(&world, (1, 1).into(), 1, *player, &[*enemy, *enemy2]);
+        let ev = PushEvent::create(&world, (1, 1).into(), 1, *player, &[*enemy, *enemy2]);
 
         world.progress();
         assert_eq!(Pos::new(4, 3), enemy.get::<&Pos>(|pos| *pos));
         assert_eq!(Pos::new(1, 1), enemy2.get::<&Pos>(|pos| *pos));
+	assert!(!ev.is_alive());
     }
 }

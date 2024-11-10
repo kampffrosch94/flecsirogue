@@ -93,8 +93,8 @@ async fn create_world() -> World {
 
     // Creates REST server on default port (27750)
     // TODO need to turn these off before reloading world
-    world.import::<stats::Stats>(); // stats for explorer
-    world.set(flecs::rest::Rest::default());
+    // world.import::<stats::Stats>(); // stats for explorer
+    // world.set(flecs::rest::Rest::default());
 
     return world;
 }

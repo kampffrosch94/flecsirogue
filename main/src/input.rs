@@ -2,7 +2,7 @@ use base::flecs_ecs;
 use base::flecs_ecs::prelude::*;
 use graphic::macroquad::prelude::*;
 
-use base::game::{DamageEvent, DamageKind, MessageLog, Player};
+use base::game::{DamageEvent, DamageKind, MessageLog, Player, PushEvent};
 use base::util::{flecs_extension::QueryExtKf, pos::Pos};
 
 use crate::{TileKind, TileMap};
@@ -51,6 +51,17 @@ impl Module for InputSystems {
                                 &player_ev.world(),
                                 DamageKind::Cutting,
                                 2,
+                                *player_ev,
+                                &[*other_entity],
+                            );
+			    let world = player_ev.world();
+			    let other_ev = world.entity_from_id(*other_entity);
+			    let p_pos = player_ev.get::<&Pos>(|pos| *pos);
+			    let t_pos = other_ev.get::<&Pos>(|pos| *pos);
+                            PushEvent::create(
+                                &world,
+                                t_pos - p_pos,
+                                1,
                                 *player_ev,
                                 &[*other_entity],
                             );
