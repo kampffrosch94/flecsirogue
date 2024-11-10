@@ -1,6 +1,6 @@
 use base::util::{flecs_extension::KfWorldExtensions, vec2f::Vec2f};
 use flecs_ecs::prelude::*;
-use macroquad::prelude::*;
+use graphic::macroquad::prelude::*;
 use tween::{Linear, Tweener};
 
 #[derive(Component)]
@@ -55,17 +55,17 @@ impl CameraWrapper {
     /// do tweening and stuff
     pub fn process(&mut self) {
         // handle camera
-        let mouse_position = Vec2f::from(mouse_position());
+        let mouse_position = mouse_position().into();
 
         if !self.offset_tween.is_finished() {
             self.offset = self.offset_tween.move_by(get_frame_time());
         }
 
         if !self.scale_tween.is_finished() {
-            let point = Vec2f::from(self.camera.screen_to_world(mouse_position.into()));
+            let point = Vec2f::from(self.camera.screen_to_world(mouse_position));
             let new_scale = self.scale_tween.move_by(get_frame_time());
             let new_camera = Self::create_camera(new_scale, self.offset);
-            let new_point = Vec2f::from(new_camera.screen_to_world(mouse_position.into()));
+            let new_point = Vec2f::from(new_camera.screen_to_world(mouse_position));
             let pan_correction = new_point - point;
             self.offset -= pan_correction;
             self.scale = new_scale;
@@ -94,14 +94,14 @@ impl CameraWrapper {
         self.offset.y += y;
     }
 
-    pub fn screen_to_world(&self, pos: impl Into<Vec2>) -> Vec2f {
-        let pos = pos.into();
+    pub fn screen_to_world(&self, pos: Vec2f) -> Vec2f {
+        let pos = pos.to_tuple().into();
         self.camera.screen_to_world(pos).into()
     }
 
     #[allow(unused)]
-    pub fn world_to_screen(&self, pos: impl Into<Vec2>) -> Vec2f {
-        let pos = pos.into();
+    pub fn world_to_screen(&self, pos: Vec2f) -> Vec2f {
+        let pos = pos.to_tuple().into();
         self.camera.world_to_screen(pos).into()
     }
 }

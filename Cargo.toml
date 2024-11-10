@@ -1,11 +1,17 @@
 [workspace]
 resolver = "2"
 members = [ 
-    "base",
+    "base", 
+    "graphic",
     "main",
 ]
 
 [profile.dev]
 opt-level = 1
+lto="off"
+incremental=true
 [profile.dev.package."*"]
 opt-level = 1
+
+[profile.dev.build-override]
+opt-level = 3

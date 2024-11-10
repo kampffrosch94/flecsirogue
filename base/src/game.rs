@@ -59,16 +59,10 @@ pub struct Origin {}
 #[derive(Component)]
 pub struct GameComponents {}
 
-// TODO this should be somewhere else
-#[derive(Component)]
-pub struct EguiContext {
-    pub ctx: &'static egui::Context,
-}
-
 impl Module for GameComponents {
     fn module(world: &World) {
         world.import::<PersistModule>();
-        //world.module::<GameComponents>("game");
+
         world.component_kf::<Target>().meta();
         world.component_kf::<Origin>().meta();
         world.component_kf::<DamageKind>().meta();
@@ -78,7 +72,7 @@ impl Module for GameComponents {
         world.component_kf::<Health>().meta().persist();
         world.component_kf::<Unit>().meta().persist();
         world.component_kf::<MessageLog>().persist();
-        world.component_kf::<EguiContext>();
+	dbg!("afsf");
         world.set(MessageLog::default());
     }
 }

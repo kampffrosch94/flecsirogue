@@ -1,10 +1,8 @@
 use flecs_ecs::prelude::*;
-use macroquad::prelude::*;
+use graphic::macroquad::prelude::*;
 
+use base::game::{DamageEvent, DamageKind, MessageLog, Origin, Player, Target};
 use base::util::{flecs_extension::QueryExtKf, pos::Pos};
-use base::game::{
-    DamageEvent, DamageKind, MessageLog, Origin, Player, Target,
-};
 
 use crate::{TileKind, TileMap};
 
@@ -19,7 +17,7 @@ impl Module for InputSystems {
             .term_singleton(0)
             .term_singleton(1)
             .with::<Player>()
-            .each_entity(|player_ev, (tm, ml, pos)| {
+            .each_entity(|player_ev, (tm, _ml, pos)| {
                 if !(is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift)) {
                     let direction_keys = [
                         (KeyCode::Kp1, (-1, 1)),

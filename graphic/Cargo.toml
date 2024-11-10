@@ -1,0 +1,10 @@
+[package]
+name = "graphic"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+macroquad = "0.4.11"
+# egui integration
+egui-miniquad = {git = "https://github.com/kampffrosch94/egui-miniquad", branch = "miniquad_update"}
+egui = "0.28"

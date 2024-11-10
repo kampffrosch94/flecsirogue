@@ -1,6 +1,7 @@
 use base::{game::*, util::flecs_extension::QueryExtKf};
 use flecs::pipeline::{OnValidate, PostUpdate};
 use flecs_ecs::prelude::*;
+use graphic::vendored::egui_macroquad::egui;
 
 #[derive(Component)]
 pub struct GameSystems {}
@@ -69,13 +70,10 @@ impl Module for GameSystems {
                 }
             });
         world
-            .system_named::<(&MessageLog, &EguiContext)>("EguiMessageLog")
-            .term_at(0)
-            .singleton()
-            .term_at(1)
-            .singleton()
-            .each(|(ml, egui)| {
-                egui::Window::new("Message Log").show(egui.ctx, |ui| {
+            .system_named::<&MessageLog>("EguiMessageLog")
+            .term_singleton(0)
+            .each(|ml| {
+                graphic::egui::Window::new("Message Log").show(egui(), |ui| {
                     for msg in &ml.messages {
                         ui.label(msg);
                     }

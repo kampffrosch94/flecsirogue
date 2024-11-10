@@ -4,10 +4,10 @@ use std::{
 };
 
 use crate::{grids::Grid, Sprite};
-use base::{game::Player, util::flecs_extension::KfWorldExtensions};
 use ::rand::{rngs::StdRng, SeedableRng};
+use base::{game::Player, util::flecs_extension::KfWorldExtensions};
 use flecs_ecs::prelude::*;
-use macroquad::prelude::*;
+use graphic::macroquad::prelude::*;
 use mapgen::*;
 
 use crate::Pos;

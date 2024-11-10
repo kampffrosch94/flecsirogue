@@ -4,21 +4,22 @@ mod input;
 mod sprite;
 mod tilemap;
 
-use base::game::{EguiContext, GameComponents, Health, Player, Unit};
 use crate::game::GameSystems;
-use input::InputSystems;
-use nanoserde::{DeJson, SerJson};
+use base::game::{GameComponents, Health, Player, Unit};
 use base::persist::PersistModule;
-use sprite::*;
-use tilemap::*;
 use base::util::pos::Pos;
 use base::vendored::*;
+use graphic::vendored::egui_macroquad;
+use input::InputSystems;
+use nanoserde::{DeJson, SerJson};
+use sprite::*;
+use tilemap::*;
 
 use camera::{CameraComponents, CameraSystems};
 
 use flecs_ecs::prelude::*;
-use macroquad::prelude::*;
-use macroquad::rand::ChooseRandom;
+use graphic::macroquad::prelude::*;
+use graphic::macroquad::rand::ChooseRandom;
 
 fn window_conf() -> Conf {
     Conf {
@@ -99,12 +100,13 @@ async fn create_world() -> World {
     return world;
 }
 
+use graphic::macroquad;
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut world = create_world().await;
 
     let player = world
-        .entity_named("PlayerCharacter")
+        .entity_named("PlayerCharacter324254234234324532safadsffdfss4")
         .set(Unit {
             name: "Player".into(),
         })
@@ -162,16 +164,8 @@ async fn main() {
 
         // unfortunately we can not call this method twice without completely refactoring
         // egui macroquad, so we wrap it around w.progress()
-        egui_macroquad::ui(|egui_ctx| {
-            let wrapper = EguiContext {
-                // UNSAFE: we extend the liftetime to 'static so that
-                // we can store the reference in a singleton
-                // do not forget to remove it before the egui context goes out of scope
-                ctx: unsafe { std::mem::transmute(egui_ctx) },
-            };
-            world.set(wrapper);
+        egui_macroquad::ui(|_| {
             world.progress();
-            world.remove::<EguiContext>();
         });
 
         // println!("{}", player.to_json(None));
@@ -179,7 +173,6 @@ async fn main() {
         next_frame().await
     }
 }
-
 
 #[cfg(test)]
 mod test {

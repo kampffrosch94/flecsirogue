@@ -1,17 +1,17 @@
 use anyhow::Result;
-use base::util::flecs_extension::KfWorldExtensions;
+use base::util::flecs_extension::{KfWorldExtensions, QueryExtKf};
 use base::util::pos::Pos;
 use base::util::vec2f::Vec2f;
 use flecs::pipeline::{OnLoad, OnStore, PreStore};
 use flecs_ecs::prelude::*;
-use macroquad::prelude::*;
+use graphic::vendored::egui_macroquad::egui;
+use graphic::macroquad::prelude::*;
 use std::collections::HashMap;
+use graphic::egui;
 
 use crate::camera::{CameraComponents, CameraWrapper};
+use crate::{FloorSprite, GameComponents, Player, TilemapComponents, Visible, WallSprite};
 use base::game::Unit;
-use crate::{
-    EguiContext, FloorSprite, GameComponents, Player, TilemapComponents, Visible, WallSprite,
-};
 
 #[derive(Default, Component)]
 pub struct TextureStore {
@@ -45,6 +45,15 @@ pub struct DrawPos {
 impl Into<Vec2> for &DrawPos {
     fn into(self) -> Vec2 {
         Vec2 {
+            x: self.x,
+            y: self.y,
+        }
+    }
+}
+
+impl Into<Vec2f> for &DrawPos {
+    fn into(self) -> Vec2f {
+        Vec2f {
             x: self.x,
             y: self.y,
         }
@@ -100,22 +109,19 @@ impl Module for SpriteSystems {
                 draw_texture_ex(&sprite.texture, dp.x, dp.y, WHITE, sprite.params.clone());
             });
 
-        w.system_named::<(&EguiContext, &CameraWrapper, &DrawPos, &Unit)>("HoverUnitSystem")
-            .term_at(0)
-            .singleton()
-            .term_at(1)
-            .singleton()
+        w.system_named::<(&CameraWrapper, &DrawPos, &Unit)>("HoverUnitSystem")
+            .term_singleton(0)
             .with::<Visible>()
-            .each(|(egui, camera, dp, unit)| {
+            .each(|(camera, dp, unit)| {
                 let mp = camera.screen_to_world(Vec2f::from(mouse_position()));
                 let ordered = |a, b, c| (a <= b) && (b < c);
                 let mouse_hovered =
                     ordered(dp.x, mp.x, dp.x + 32.0) && ordered(dp.y, mp.y, dp.y + 32.0);
                 if mouse_hovered {
-                    let label_pos = camera.world_to_screen(dp) + Vec2f { x: 10., y: 20. };
+                    let label_pos = camera.world_to_screen(dp.into()) + Vec2f { x: 10., y: 20. };
                     egui::Area::new(egui::Id::new("hover_unit_area"))
                         .fixed_pos(egui::pos2(label_pos.x, label_pos.y))
-                        .show(egui.ctx, |ui| {
+                        .show(egui(), |ui| {
                             egui::Frame::none()
                                 .fill(egui::Color32::BLACK)
                                 .show(ui, |ui| {

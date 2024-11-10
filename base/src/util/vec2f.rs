@@ -14,15 +14,17 @@ impl TweenValue for Vec2f {
     }
 }
 
-
-impl From<(f32, f32)> for Vec2f {
-    fn from(t: (f32, f32)) -> Self {
+impl<T> From<T> for Vec2f
+    where T: Into<(f32,f32)>
+{
+    fn from(t: T) -> Self {
+	let t: (f32, f32) = t.into();
         Self{x: t.0, y: t.1}
     }
 }
 
-impl From<Vec2f> for (f32, f32) {
-    fn from(v: Vec2f) -> Self {
-        (v.x, v.y)
+impl Vec2f{
+    pub fn to_tuple(self) -> (f32, f32) {
+	(self.x,self.y)
     }
 }

@@ -6,8 +6,7 @@ use egui_miniquad::EguiMq;
 use macroquad::prelude::*;
 use miniquad as mq;
 
-pub use egui;
-pub use macroquad;
+use macroquad;
 
 struct Egui {
     egui_mq: EguiMq,
@@ -16,6 +15,7 @@ struct Egui {
 
 // Global variable and global functions because it's more like macroquad way
 static mut EGUI: Option<Egui> = None;
+static mut EGUI_CONTEXT: Option<egui::Context> = None;
 
 fn get_egui() -> &'static mut Egui {
     unsafe {
@@ -27,6 +27,17 @@ fn get_egui() -> &'static mut Egui {
         }
     }
 }
+
+pub fn egui() -> &'static egui::Context {
+    unsafe {
+        if let Some(ctx) = EGUI_CONTEXT.as_mut() {
+            ctx
+        } else {
+            panic!("You need to call this in a context wrapped by ui()");
+        }
+    }
+}
+
 
 impl Egui {
     fn new() -> Self {
@@ -56,7 +67,11 @@ impl Egui {
 
 /// Calculates egui ui. Must be called once per frame.
 pub fn ui<F: FnOnce(&egui::Context)>(f: F) {
-    get_egui().ui(|_, ctx| f(ctx))
+    get_egui().ui(|_, ctx| {
+        unsafe { EGUI_CONTEXT = Some(ctx.clone()) };
+        f(ctx);
+        unsafe { EGUI_CONTEXT = None };
+    })
 }
 
 /// Configure egui without beginning or ending a frame.
