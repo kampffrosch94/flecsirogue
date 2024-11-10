@@ -138,7 +138,7 @@ fn deserialize_entity<'a>(world: &'a World, s: &SerializedEntity) -> EntityView<
 
     //println!("Looking up components");
     for comp in &s.components {
-        dbg!(comp);
+        //dbg!(comp);
         let comp_e = world.try_lookup(&comp.name).unwrap();
         let type_id = comp_e.id_view().type_id().id();
         comp_e.get::<&Persister>(|p| (p.deserializer)(e, *type_id, &comp.value));
@@ -179,9 +179,9 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
     let mut pairs = Vec::new();
     let mut tags = Vec::new();
 
-    println!("{e}");
+    //println!("{e}");
     e.each_component(|comp| {
-        println!("Comp: {:?}", &comp);
+        //println!("Comp: {:?}", &comp);
         if comp.is_entity() {
             let ev = comp.entity_view();
             let name = ev.path().unwrap();
@@ -196,11 +196,7 @@ fn serialize_entity(e: EntityView) -> SerializedEntity {
                 }
             }
         } else if comp.is_pair() {
-            println!(
-                "Pair {} + {}",
-                comp.first_id().name(),
-                comp.second_id().name()
-            );
+            //println!("Pair {} + {}", comp.first_id().name(), comp.second_id().name());
             let rel = comp.first_id();
             let target = comp.second_id();
             let pair = ecs_pair(*rel.id(), *target.id());
