@@ -43,21 +43,24 @@ impl Module for GameSystems {
                 t_hp.current -= ev.amount;
             });
 
-        // check that DamageEvents are wellformed
         world
-            .system_named::<&DamageEvent>("DamageEvent sanity check")
-            .scope_open()
-            .not()
-            .with_enum_wildcard::<DamageKind>()
+            .system_named::<(&PushEvent, &Unit, &mut Pos, &mut MessageLog)>(
+                "PushEvent processing",
+            )
+            .kind::<PostUpdate>()
             .with_first_name::<Target>("$target")
-            .with::<Health>()
-            .set_src_name("$target")
-            .with_first::<Origin>(*flecs::Any)
-            .scope_close()
-            .kind::<OnValidate>()
-            .each_entity(|e, _| {
-                panic!("DamageEvent is malformed:\n{e:?}");
+            .term_src(1, "$target")
+            .term_src(2, "$target")
+            .term_singleton(3)
+            .each_entity(|e, (ev, t_unit, t_pos, ml)| {
+                println!("Processing {e:?}");
+                let name = &t_unit.name;
+                ml.messages.push(format!("{name} gets pushed."));
+                // TODO not only units should be able to take damage
+                // TODO damage resistance
+                *t_pos += ev.direction * ev.distance;
             });
+
         world
             .system_named::<&DamageEvent>("DamageEvent cleanup")
             .kind::<PostUpdate>()
@@ -79,6 +82,8 @@ impl Module for GameSystems {
         world
             .system_named::<&MessageLog>("EguiMessageLog")
             .term_singleton(0)
+            .with::<EguiEnabled>()
+            .singleton()
             .each(|ml| {
                 graphic::egui::Window::new("Message Log").show(egui(), |ui| {
                     for msg in &ml.messages {

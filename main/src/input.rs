@@ -2,7 +2,7 @@ use base::flecs_ecs;
 use base::flecs_ecs::prelude::*;
 use graphic::macroquad::prelude::*;
 
-use base::game::{DamageEvent, DamageKind, MessageLog, Origin, Player, Target};
+use base::game::{DamageEvent, DamageKind, MessageLog, Player};
 use base::util::{flecs_extension::QueryExtKf, pos::Pos};
 
 use crate::{TileKind, TileMap};
