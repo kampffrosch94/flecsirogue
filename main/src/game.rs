@@ -1,8 +1,13 @@
 use base::flecs_ecs;
 use base::flecs_ecs::prelude::*;
+use base::util::flecs_extension::KfWorldExtensions;
+use base::util::pos::Pos;
 use base::{game::*, util::flecs_extension::QueryExtKf};
-use flecs::pipeline::{OnValidate, PostUpdate};
+use flecs::pipeline::PostUpdate;
 use graphic::vendored::egui_macroquad::egui;
+
+#[derive(Component)]
+pub struct EguiEnabled {}
 
 #[derive(Component)]
 pub struct GameSystems {}
@@ -10,6 +15,7 @@ pub struct GameSystems {}
 impl Module for GameSystems {
     fn module(world: &World) {
         world.import::<GameComponents>();
+        world.component_kf::<EguiEnabled>();
 
         world
             .system_named::<(
@@ -26,8 +32,8 @@ impl Module for GameSystems {
             .term_src(2, "$target")
             .term_src(3, "$target")
             .term_singleton(4)
-            .each_entity(|e, (ev, kind, t_hp, t_unit, ml)| {
-                println!("Processing {e:?}");
+            .each(|(ev, kind, t_hp, t_unit, ml)| {
+                //println!("Processing {e:?}");
                 let name = &t_unit.name;
                 let amount = &ev.amount;
                 ml.messages
@@ -85,7 +91,7 @@ impl Module for GameSystems {
 
 #[cfg(test)]
 mod test {
-    use base::game::DamageKind;
+    use base::{game::DamageKind, util::pos::Pos};
 
     use super::*;
 
@@ -107,16 +113,39 @@ mod test {
             .set(Unit {
                 name: "Goblina McGobbo".into(),
             });
-        world
-            .entity()
-            .set(DamageEvent { amount: 2 })
-            .add_first::<Target>(enemy)
-            .add_first::<Target>(enemy2)
-            .add_first::<Origin>(player)
-            .add_enum(DamageKind::Cutting);
+
+        DamageEvent::create(&world, DamageKind::Cutting, 2, *player, &[*enemy, *enemy2]);
 
         world.progress();
         assert_eq!(3, enemy.get::<&Health>(|hp| hp.current));
         assert_eq!(3, enemy2.get::<&Health>(|hp| hp.current));
+    }
+
+    #[test]
+    fn push_event_test() {
+        let world = World::new();
+        world.import::<GameSystems>();
+
+        let player = world.entity_named("player");
+        let enemy = world
+            .entity_named("gobbo")
+            .set(Health { max: 5, current: 5 })
+            .set(Unit {
+                name: "Goblin McGobbo".into(),
+            })
+            .set(Pos { x: 3, y: 2 });
+        let enemy2 = world
+            .entity_named("gobbo 2")
+            .set(Health { max: 5, current: 5 })
+            .set(Unit {
+                name: "Goblina McGobbo".into(),
+            })
+            .set(Pos { x: 0, y: 0 });
+
+        PushEvent::create(&world, (1, 1).into(), 1, *player, &[*enemy, *enemy2]);
+
+        world.progress();
+        assert_eq!(Pos::new(4, 3), enemy.get::<&Pos>(|pos| *pos));
+        assert_eq!(Pos::new(1, 1), enemy2.get::<&Pos>(|pos| *pos));
     }
 }
