@@ -1,8 +1,8 @@
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
 
-use components::util::{flecs_extension::QueryExtKf, pos::Pos};
-use components::game::{
+use base::util::{flecs_extension::QueryExtKf, pos::Pos};
+use base::game::{
     DamageEvent, DamageKind, MessageLog, Origin, Player, Target,
 };
 

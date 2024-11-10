@@ -1,4 +1,4 @@
-use components::{game::*, util::flecs_extension::QueryExtKf};
+use base::{game::*, util::flecs_extension::QueryExtKf};
 use flecs::pipeline::{OnValidate, PostUpdate};
 use flecs_ecs::prelude::*;
 
@@ -86,7 +86,7 @@ impl Module for GameSystems {
 
 #[cfg(test)]
 mod test {
-    use components::game::DamageKind;
+    use base::game::DamageKind;
 
     use super::*;
 

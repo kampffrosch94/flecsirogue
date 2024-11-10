@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(static_mut_refs)]
 // vendored from https://github.com/optozorax/egui-macroquad/tree/dfbdb967d6cf4e4726b84a568ec1b2bdc7e4f492
 
 use egui_miniquad::EguiMq;

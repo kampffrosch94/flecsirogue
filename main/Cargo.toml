@@ -18,5 +18,5 @@ egui = "0.28"
 symmetric-shadowcasting = { git = "https://github.com/nsmryan/shadowcasting.git", version = "0.2.0" }
 nanoserde = "0.1.37"
 
-components = {path = "../components/"}
+base = {path = "../base/"}
 

@@ -4,15 +4,15 @@ mod input;
 mod sprite;
 mod tilemap;
 
-use components::game::{EguiContext, GameComponents, Health, Player, Unit};
+use base::game::{EguiContext, GameComponents, Health, Player, Unit};
 use crate::game::GameSystems;
 use input::InputSystems;
 use nanoserde::{DeJson, SerJson};
-use components::persist::PersistModule;
+use base::persist::PersistModule;
 use sprite::*;
 use tilemap::*;
-use components::util::pos::Pos;
-use components::vendored::*;
+use base::util::pos::Pos;
+use base::vendored::*;
 
 use camera::{CameraComponents, CameraSystems};
 
@@ -147,14 +147,14 @@ async fn main() {
         clear_background(BLACK);
 
         if is_key_pressed(KeyCode::F5) {
-            let s = components::persist::serialize_world(&world).serialize_json();
+            let s = base::persist::serialize_world(&world).serialize_json();
             backup = Some(s);
         }
         if is_key_pressed(KeyCode::F9) {
             if let Some(ref json) = backup {
                 let new_world = create_world().await;
                 let ds = Vec::deserialize_json(json).unwrap();
-                components::persist::deserialize_world(&new_world, &ds);
+                base::persist::deserialize_world(&new_world, &ds);
                 world = new_world;
                 println!("World reloaded!");
             }

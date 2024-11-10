@@ -1,14 +1,14 @@
 use anyhow::Result;
-use components::util::flecs_extension::KfWorldExtensions;
-use components::util::pos::Pos;
-use components::util::vec2f::Vec2f;
+use base::util::flecs_extension::KfWorldExtensions;
+use base::util::pos::Pos;
+use base::util::vec2f::Vec2f;
 use flecs::pipeline::{OnLoad, OnStore, PreStore};
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;
 use std::collections::HashMap;
 
 use crate::camera::{CameraComponents, CameraWrapper};
-use components::game::Unit;
+use base::game::Unit;
 use crate::{
     EguiContext, FloorSprite, GameComponents, Player, TilemapComponents, Visible, WallSprite,
 };

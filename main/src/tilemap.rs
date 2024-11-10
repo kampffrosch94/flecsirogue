@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{grids::Grid, Sprite};
-use components::{game::Player, util::flecs_extension::KfWorldExtensions};
+use base::{game::Player, util::flecs_extension::KfWorldExtensions};
 use ::rand::{rngs::StdRng, SeedableRng};
 use flecs_ecs::prelude::*;
 use macroquad::prelude::*;

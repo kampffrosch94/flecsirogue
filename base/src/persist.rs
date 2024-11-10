@@ -10,7 +10,6 @@ pub struct PersistModule {}
 
 impl Module for PersistModule {
     fn module(world: &World) {
-        //world.module::<PersistModule>("persist");
         world.component_kf::<Persist>();
         world.component_kf::<Persister>();
     }
@@ -341,7 +340,6 @@ mod test {
         );
         println!("------------");
         dbg!(&serialized);
-        let id = e.id();
 
         let world2 = create_test_world();
         println!("------------");
@@ -378,7 +376,7 @@ mod test {
         let world = create_test_world();
 
         let rel_target = world.entity_named("RelTarget").add::<SomeTag>();
-        let e = world
+        world
             .entity_named("thing")
             .set(Opaque { stuff: 32 })
             .set(Transparent { stuff: 42 })
@@ -402,7 +400,7 @@ mod test {
         world.component::<Health>().meta().persist();
 
         world.component::<Unit>().meta().persist();
-        let e = world
+        world
             .entity()
             .set(Unit {
                 name: "VillagerA".into(),
