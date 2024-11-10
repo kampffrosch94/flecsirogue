@@ -15,16 +15,17 @@ impl TweenValue for Vec2f {
 }
 
 impl<T> From<T> for Vec2f
-    where T: Into<(f32,f32)>
+where
+    T: Into<(f32, f32)>,
 {
     fn from(t: T) -> Self {
-	let t: (f32, f32) = t.into();
-        Self{x: t.0, y: t.1}
+        let t: (f32, f32) = t.into();
+        Self { x: t.0, y: t.1 }
     }
 }
 
-impl Vec2f{
+impl Vec2f {
     pub fn to_tuple(self) -> (f32, f32) {
-	(self.x,self.y)
+        (self.x, self.y)
     }
 }

@@ -1,5 +1,6 @@
+use base::flecs_ecs;
+use base::flecs_ecs::prelude::*;
 use base::util::{flecs_extension::KfWorldExtensions, vec2f::Vec2f};
-use flecs_ecs::prelude::*;
 use graphic::macroquad::prelude::*;
 use tween::{Linear, Tweener};
 

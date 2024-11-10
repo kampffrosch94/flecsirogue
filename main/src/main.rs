@@ -6,9 +6,8 @@ mod tilemap;
 
 use crate::game::GameSystems;
 use base::game::{GameComponents, Health, Player, Unit};
-use base::persist::PersistModule;
 use base::util::pos::Pos;
-use base::vendored::*;
+use base::{register_components, vendored::*};
 use graphic::vendored::egui_macroquad;
 use input::InputSystems;
 use nanoserde::{DeJson, SerJson};
@@ -17,7 +16,7 @@ use tilemap::*;
 
 use camera::{CameraComponents, CameraSystems};
 
-use flecs_ecs::prelude::*;
+use base::flecs_ecs::prelude::*;
 use graphic::macroquad::prelude::*;
 use graphic::macroquad::rand::ChooseRandom;
 
@@ -50,11 +49,8 @@ async fn create_world() -> World {
 
     let world = World::new();
 
-    world.import::<PersistModule>();
-
-    // world.import::<SpriteComponents>();
+    register_components(&world);
     world.import::<SpriteComponents>();
-    world.import::<GameComponents>();
     world.import::<TilemapComponents>();
     world.import::<CameraComponents>();
 
@@ -106,7 +102,7 @@ async fn main() {
     let mut world = create_world().await;
 
     let player = world
-        .entity_named("PlayerCharacter324254234234324532safadsffdfss4")
+        .entity_named("PlayerCharacter")
         .set(Unit {
             name: "Player".into(),
         })
@@ -171,27 +167,5 @@ async fn main() {
         // println!("{}", player.to_json(None));
         egui_macroquad::draw();
         next_frame().await
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use flecs_ecs::prelude::*;
-
-    #[test]
-    fn goblin_test() {
-        #[derive(Component, Debug)]
-        struct MaxHealth(i32);
-
-        let w = World::new();
-        w.component::<MaxHealth>()
-            .add_trait::<(flecs::OnInstantiate, flecs::Inherit)>();
-
-        let goblin = w.prefab().set(MaxHealth(4));
-        let e = w.entity().is_a_id(goblin);
-
-        e.get::<&MaxHealth>(|mh| assert_eq!(4, mh.0));
-        goblin.get::<&mut MaxHealth>(|mh| mh.0 = 5);
-        e.get::<&MaxHealth>(|mh| assert_eq!(5, mh.0));
     }
 }

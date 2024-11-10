@@ -5,7 +5,6 @@ use nanoserde::{DeJson, SerJson};
 
 use crate::persist::{PersistExtension, PersistModule, PersistTagExtension};
 
-
 #[derive(Component, Debug, DeJson, SerJson, Default)]
 #[meta]
 pub struct Player {}
@@ -72,7 +71,6 @@ impl Module for GameComponents {
         world.component_kf::<Health>().meta().persist();
         world.component_kf::<Unit>().meta().persist();
         world.component_kf::<MessageLog>().persist();
-	dbg!("afsf");
         world.set(MessageLog::default());
     }
 }

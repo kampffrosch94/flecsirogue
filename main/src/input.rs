@@ -1,4 +1,5 @@
-use flecs_ecs::prelude::*;
+use base::flecs_ecs;
+use base::flecs_ecs::prelude::*;
 use graphic::macroquad::prelude::*;
 
 use base::game::{DamageEvent, DamageKind, MessageLog, Origin, Player, Target};

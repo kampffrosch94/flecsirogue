@@ -1,6 +1,7 @@
+use base::flecs_ecs;
+use base::flecs_ecs::prelude::*;
 use base::{game::*, util::flecs_extension::QueryExtKf};
 use flecs::pipeline::{OnValidate, PostUpdate};
-use flecs_ecs::prelude::*;
 use graphic::vendored::egui_macroquad::egui;
 
 #[derive(Component)]

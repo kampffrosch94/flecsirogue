@@ -1,13 +1,14 @@
 use anyhow::Result;
+use base::flecs_ecs;
+use base::flecs_ecs::prelude::*;
 use base::util::flecs_extension::{KfWorldExtensions, QueryExtKf};
 use base::util::pos::Pos;
 use base::util::vec2f::Vec2f;
 use flecs::pipeline::{OnLoad, OnStore, PreStore};
-use flecs_ecs::prelude::*;
-use graphic::vendored::egui_macroquad::egui;
-use graphic::macroquad::prelude::*;
-use std::collections::HashMap;
 use graphic::egui;
+use graphic::macroquad::prelude::*;
+use graphic::vendored::egui_macroquad::egui;
+use std::collections::HashMap;
 
 use crate::camera::{CameraComponents, CameraWrapper};
 use crate::{FloorSprite, GameComponents, Player, TilemapComponents, Visible, WallSprite};
@@ -172,7 +173,7 @@ impl Module for SpriteSystems {
 #[cfg(test)]
 mod test {
     use crate::Sprite;
-    use flecs_ecs::prelude::*;
+    use base::flecs_ecs::prelude::*;
 
     #[test]
     fn why_is_sprite_serialized() {

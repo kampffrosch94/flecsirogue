@@ -5,8 +5,9 @@ use std::{
 
 use crate::{grids::Grid, Sprite};
 use ::rand::{rngs::StdRng, SeedableRng};
+use base::flecs_ecs;
+use base::flecs_ecs::prelude::*;
 use base::{game::Player, util::flecs_extension::KfWorldExtensions};
-use flecs_ecs::prelude::*;
 use graphic::macroquad::prelude::*;
 use mapgen::*;
 

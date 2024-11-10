@@ -4,12 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.86"
 derive_more = "0.99.18"
 flecs_ecs = { git = "https://github.com/Indra-db/Flecs-Rust.git", features = ["flecs_manual_registration"]} 
-mapgen = "0.6.0"
 tween = "2.0.3"
-rand = "0.8.5"
-
-symmetric-shadowcasting = { git = "https://github.com/nsmryan/shadowcasting.git", version = "0.2.0" }
 nanoserde = "0.1.37"
