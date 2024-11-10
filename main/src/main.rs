@@ -8,6 +8,7 @@ use crate::game::GameSystems;
 use base::game::{GameComponents, Health, Player, Unit};
 use base::util::pos::Pos;
 use base::{register_components, vendored::*};
+use game::EguiEnabled;
 use graphic::vendored::egui_macroquad;
 use input::InputSystems;
 use nanoserde::{DeJson, SerJson};
@@ -59,6 +60,8 @@ async fn create_world() -> World {
     world.import::<CameraSystems>();
     world.import::<InputSystems>();
     world.import::<TilemapSystems>();
+
+    world.add::<EguiEnabled>();
 
     let floor_s = FloorSprite {
         texture: store.get("tiles"),
