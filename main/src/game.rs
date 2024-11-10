@@ -6,6 +6,8 @@ use base::{game::*, util::flecs_extension::QueryExtKf};
 use flecs::pipeline::PostUpdate;
 use graphic::vendored::egui_macroquad::egui;
 
+use crate::{TileKind, TileMap};
+
 #[derive(Component)]
 pub struct EguiEnabled {}
 
@@ -16,6 +18,7 @@ impl Module for GameSystems {
     fn module(world: &World) {
         world.import::<GameComponents>();
         world.component_kf::<EguiEnabled>();
+        world.component_kf::<TileMap>();
 
         world
             .system_named::<(
@@ -44,7 +47,7 @@ impl Module for GameSystems {
             });
 
         world
-            .system_named::<(&PushEvent, &Unit, &mut Pos, &mut MessageLog)>(
+            .system_named::<(&PushEvent, &Unit, &mut Pos, &mut MessageLog, &mut TileMap)>(
                 "PushEvent processing",
             )
             .kind::<PostUpdate>()
@@ -52,13 +55,19 @@ impl Module for GameSystems {
             .term_src(1, "$target")
             .term_src(2, "$target")
             .term_singleton(3)
-            .each_entity(|e, (ev, t_unit, t_pos, ml)| {
+            .term_singleton(4)
+            .each_entity(|e, (ev, t_unit, t_pos, ml, tm)| {
                 println!("Processing {e:?}");
                 let name = &t_unit.name;
-                ml.messages.push(format!("{name} gets pushed."));
-                // TODO not only units should be able to take damage
-                // TODO damage resistance
-                *t_pos += ev.direction * ev.distance;
+
+                let new_pos = *t_pos + ev.direction * ev.distance;
+                let is_floor = tm.terrain[new_pos] == TileKind::Floor;
+                let maybe_blocker = tm.units.get(&new_pos);
+                let not_blocked = maybe_blocker.is_none();
+                if is_floor && not_blocked {
+                    ml.messages.push(format!("{name} gets pushed."));
+                    *t_pos = new_pos;
+                }
             });
 
         world
@@ -99,7 +108,9 @@ impl Module for GameSystems {
 
 #[cfg(test)]
 mod test {
-    use base::{game::DamageKind, util::pos::Pos};
+    use base::{game::DamageKind, util::pos::Pos, vendored::grids::Grid};
+
+    use crate::Visibility;
 
     use super::*;
 
@@ -127,13 +138,21 @@ mod test {
         world.progress();
         assert_eq!(3, enemy.get::<&Health>(|hp| hp.current));
         assert_eq!(3, enemy2.get::<&Health>(|hp| hp.current));
-	assert!(!ev.is_alive());
+        assert!(!ev.is_alive());
     }
 
     #[test]
     fn push_event_test() {
         let world = World::new();
         world.import::<GameSystems>();
+
+        world.set(TileMap {
+            w: 10,
+            h: 10,
+            terrain: Grid::new(10, 10, TileKind::Floor),
+            visibility: Grid::new(10, 10, Visibility::Unseen),
+            units: Default::default(),
+        });
 
         let player = world.entity_named("player");
         let enemy = world
@@ -156,6 +175,6 @@ mod test {
         world.progress();
         assert_eq!(Pos::new(4, 3), enemy.get::<&Pos>(|pos| *pos));
         assert_eq!(Pos::new(1, 1), enemy2.get::<&Pos>(|pos| *pos));
-	assert!(!ev.is_alive());
+        assert!(!ev.is_alive());
     }
 }

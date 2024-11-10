@@ -54,10 +54,10 @@ impl Module for InputSystems {
                                 *player_ev,
                                 &[*other_entity],
                             );
-			    let world = player_ev.world();
-			    let other_ev = world.entity_from_id(*other_entity);
-			    let p_pos = player_ev.get::<&Pos>(|pos| *pos);
-			    let t_pos = other_ev.get::<&Pos>(|pos| *pos);
+                            let world = player_ev.world();
+                            let other_ev = world.entity_from_id(*other_entity);
+                            let p_pos = player_ev.get::<&Pos>(|pos| *pos);
+                            let t_pos = other_ev.get::<&Pos>(|pos| *pos);
                             PushEvent::create(
                                 &world,
                                 t_pos - p_pos,
