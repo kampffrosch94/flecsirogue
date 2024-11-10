@@ -47,13 +47,13 @@ impl Module for InputSystems {
                             *pos = new_pos;
                         }
                         if let Some(other_entity) = maybe_blocker {
-                            player_ev
-                                .world()
-                                .entity()
-                                .set(DamageEvent { amount: 2 })
-                                .add_first::<Origin>(*player_ev)
-                                .add_first::<Target>(*other_entity)
-                                .add_enum(DamageKind::Cutting);
+                            DamageEvent::create(
+                                &player_ev.world(),
+                                DamageKind::Cutting,
+                                2,
+                                *player_ev,
+                                &[*other_entity],
+                            );
                         }
                     }
                 }
