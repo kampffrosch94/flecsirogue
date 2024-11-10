@@ -39,6 +39,7 @@
               rustfmt
               targets.wasm32-unknown-unknown.stable.rust-std
               targets.wasm32-unknown-emscripten.stable.rust-std
+              rustc-codegen-cranelift
             ])
             clang
             mold
