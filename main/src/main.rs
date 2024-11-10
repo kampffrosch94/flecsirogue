@@ -164,7 +164,6 @@ async fn main() {
             world.progress();
         });
 
-        // println!("{}", player.to_json(None));
         egui_macroquad::draw();
         next_frame().await
     }

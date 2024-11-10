@@ -134,7 +134,7 @@ impl<T: Clone> Grid<T> {
     }
 
     pub fn clone_rect(&self, min: Pos, max: Pos) -> Grid<T> {
-        let dims = max - min.into();
+        let dims = max - min;
         let mut result = Grid::new(dims.x, dims.y, self[(0i32, 0i32)].clone());
 
         for x in 0..dims.x {

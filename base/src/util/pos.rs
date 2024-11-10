@@ -1,8 +1,7 @@
 use std::ops::Sub;
 use std::ops::{Add, AddAssign};
 
-use derive_more::From;
-use derive_more::Into;
+use derive_more::*;
 use flecs_ecs::prelude::Component;
 use nanoserde::{DeJson, SerJson};
 
@@ -112,6 +111,53 @@ impl From<(isize, isize)> for Pos {
         Self {
             x: value.0 as _,
             y: value.1 as _,
+        }
+    }
+}
+
+#[derive(Clone, Mul, Copy, Hash, PartialEq, Eq, From, Into, Debug, Component, DeJson, SerJson)]
+#[meta]
+pub struct Direction {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl Add<Direction> for Pos {
+    type Output = Pos;
+
+    fn add(self, rhs: Direction) -> Self::Output {
+        Pos {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl AddAssign<Direction> for Pos {
+    fn add_assign(&mut self, rhs: Direction) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+    }
+}
+
+impl Sub<Direction> for Pos {
+    type Output = Pos;
+
+    fn sub(self, rhs: Direction) -> Self::Output {
+        Pos {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+impl Sub<Pos> for Pos {
+    type Output = Direction;
+
+    fn sub(self, rhs: Pos) -> Self::Output {
+        Self::Output {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
         }
     }
 }
