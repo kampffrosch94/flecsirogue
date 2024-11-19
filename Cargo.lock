@@ -451,7 +451,6 @@ dependencies = [
  "base",
  "graphic",
  "mapgen",
- "nanoserde",
  "rand",
  "symmetric-shadowcasting",
  "tween",

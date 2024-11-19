@@ -37,12 +37,10 @@
               rust-src
               rustc
               rustfmt
-              targets.wasm32-unknown-unknown.stable.rust-std
-              targets.wasm32-unknown-emscripten.stable.rust-std
+              targets.wasm32-unknown-unknown.latest.rust-std
+              #targets.wasm32-unknown-emscripten.stable.rust-std
               rustc-codegen-cranelift
             ])
-            clang
-            mold
             # rust-analyzer-nightly # optional
 
             # necessary to build

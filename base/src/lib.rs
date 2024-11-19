@@ -7,6 +7,7 @@ pub mod persist;
 pub mod util;
 pub mod vendored;
 pub use flecs_ecs;
+pub use nanoserde;
 
 pub fn register_components(world: &World) {
     world.import::<PersistModule>();

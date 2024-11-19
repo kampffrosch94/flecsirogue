@@ -3,6 +3,9 @@ name = "base"
 version = "0.1.0"
 edition = "2021"
 
+#[lib]
+#crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 derive_more = "0.99.18"
 flecs_ecs = { git = "https://github.com/Indra-db/Flecs-Rust.git", features = ["flecs_manual_registration"]} 

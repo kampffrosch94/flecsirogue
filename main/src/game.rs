@@ -146,13 +146,16 @@ mod test {
         let world = World::new();
         world.import::<GameSystems>();
 
-        world.set(TileMap {
+        let mut tm = TileMap {
             w: 10,
             h: 10,
             terrain: Grid::new(10, 10, TileKind::Floor),
             visibility: Grid::new(10, 10, Visibility::Unseen),
             units: Default::default(),
-        });
+        };
+
+	tm.terrain[(1,1)] = TileKind::Wall;
+        world.set(tm);
 
         let player = world.entity_named("player");
         let enemy = world
@@ -174,7 +177,10 @@ mod test {
 
         world.progress();
         assert_eq!(Pos::new(4, 3), enemy.get::<&Pos>(|pos| *pos));
-        assert_eq!(Pos::new(1, 1), enemy2.get::<&Pos>(|pos| *pos));
+	// does not get pushed because wall is in the way
+        assert_eq!(Pos::new(0, 0), enemy2.get::<&Pos>(|pos| *pos));
+	// instead they get extra damage
+        assert_eq!(3, enemy2.get::<&Health>(|hp| hp.current));
         assert!(!ev.is_alive());
     }
 }
