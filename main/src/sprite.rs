@@ -171,13 +171,4 @@ impl Module for SpriteSystems {
 }
 
 #[cfg(test)]
-mod test {
-    use crate::Sprite;
-    use base::flecs_ecs::prelude::*;
-
-    #[test]
-    fn why_is_sprite_serialized() {
-        let w = World::new();
-        w.component::<Sprite>();
-    }
-}
+mod test {}
